@@ -1,0 +1,653 @@
+"use client";
+
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+
+import { Button } from "../ui/button";
+import { IndianRupee, Plus, Trash } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import CreatableSelect from "react-select/creatable";
+import { ClientData, InvoiceData, InvoiceItem, SellerCompany, Service, ServiceOptions } from "@/lib/types/dataTypes";
+import Select from "react-select";
+import { insertInvoice } from "@/lib/actions/invoice";
+
+type ClientOption = {
+    label: string
+    value: number
+}
+
+type InvoiceType = "GST" | "NON_GST" | "EXPORT"
+
+type Option = {
+    label: string
+    value: InvoiceType
+}
+
+const selectStyles = {
+    menuPortal: (base: any) => ({
+        ...base,
+        zIndex: 9999,
+        pointerEvents: "auto",
+    }),
+}
+
+const formatDate = (date: Date) =>
+    date.toLocaleDateString("en-CA")
+
+const round = (val: number) => Math.round(val * 100) / 100;
+
+const formatCurrency = (val: number) =>
+    new Intl.NumberFormat("en-IN").format(val);
+
+export const selectClassNames = {
+    control: ({ isFocused }: any) =>
+        `h-10 min-h-0 flex w-full rounded-md border border-input bg-muted/50 px-3 text-sm 
+     ${isFocused ? "ring-3 ring-ring/50" : ""}`,
+
+    menu: () =>
+        "mt-1 rounded-md border border-input bg-popover shadow-md",
+
+    option: ({ isFocused, isSelected }: any) =>
+        `px-3 py-2 text-sm cursor-pointer rounded-sm ${isSelected
+            ? "bg-primary text-primary-foreground"
+            : isFocused
+                ? "bg-accent text-accent-foreground"
+                : ""
+        }`,
+
+    singleValue: () => "text-foreground",
+    placeholder: () => "text-muted-foreground",
+    input: () => "text-foreground",
+    dropdownIndicator: () => "text-muted-foreground",
+}
+
+const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
+    ClientList?: ClientData[];
+    ServicesList?: Service[];
+    companyData?: SellerCompany;
+}) => {
+
+    const router = useRouter();
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    const formattedClients: ClientOption[] =
+        (ClientList || []).map((client: any) => ({
+            label: client.company_name,
+            value: client.id,
+        }))
+
+    const formattedServices: ServiceOptions[] =
+        (ServicesList || []).map((service: any) => ({
+            label: service.name,
+            value: String(service.id),
+        }))
+
+    const invoiceTypeOptions: Option[] = [
+        { label: "GST Invoice", value: "GST" }
+    ]
+
+    const initialData: InvoiceData = {
+        clientId: 0,
+        invoiceType: "GST",
+        invoiceId: "",
+        invoiceDate: new Date(),
+        clientGst: "",
+        PONo: "",
+        PODate: new Date(),
+        reference: "",
+    }
+
+    const initialItems: InvoiceItem[] = [
+        {
+            id: crypto.randomUUID(),
+            service: null,
+            serviceId: null,
+            hsn: "",
+            expiry: new Date,
+            cost: "",
+        },]
+
+    const [open, setOpen] = useState(false)
+    const [data, setData] = useState<InvoiceData>(initialData)
+    const [items, setItems] = useState<InvoiceItem[]>(initialItems)
+    const [inputValues, setInputValues] = useState<Record<string, string>>({})
+
+    const deleteItem = (id: string) => {
+        setItems((prev) => prev.filter((item) => item.id !== id))
+    }
+
+    const resetForm = () => {
+        setData(initialData)
+        setItems([
+            {
+                id: crypto.randomUUID(),
+                service: null,
+                serviceId: null,
+                hsn: "",
+                expiry: new Date,
+                cost: "",
+            },
+        ])
+    }
+
+    const [bill, setBill] = useState({
+        subTotal: 0,
+        totalTax: 0,
+        grandTotal: 0
+    })
+
+    const companyState = companyData?.gst?.slice(0, 2);
+    const clientState = data.clientGst?.slice(0, 2);
+
+    const isIGST =
+        companyState &&
+        clientState &&
+        companyState !== clientState;
+
+    const igstAmount = round(isIGST ? bill.totalTax : 0);
+    const cgstAmount = round(!isIGST ? bill.totalTax / 2 : 0);
+    const sgstAmount = round(!isIGST ? bill.totalTax / 2 : 0);
+
+    useEffect(() => {
+
+        const subTotal = round(items.reduce(
+            (sum, item) => sum + Number(item.cost || 0),
+            0
+        ));
+
+        const taxRate = 18;
+        const totalTax = round((subTotal * taxRate) / 100);
+
+        const grandTotal = subTotal + totalTax;
+
+        setBill({
+            subTotal,
+            totalTax,
+            grandTotal,
+        });
+
+    }, [items, data.clientGst]);
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault()
+
+        const res = await insertInvoice(data, items, Boolean(isIGST));
+
+        if (!res.success) {
+            alert(res.message)
+            return;
+        }
+
+        resetForm();
+        setOpen(false);
+        router.refresh();
+    }
+
+    return (
+        <div>
+            <Button type="button" className="p-4" onClick={() => { setOpen(true) }}>
+                <Plus /> Create Invoice
+            </Button>
+
+            <Dialog open={open} onOpenChange={(val) => {
+                if (!val) resetForm()
+                setOpen(val)
+            }}>
+                <DialogContent
+                    className="
+                        w-full
+                            max-w-[95vw]
+                            sm:max-w-md
+                            lg:max-w-[60vw]
+                            lg:h-[70vh]
+                            h-[80vh] 
+                            flex flex-col
+                            p-0
+                            overflow-y-auto
+                            "
+                >
+                    <form onSubmit={handleSubmit}>
+                        <DialogHeader className="p-6 pb-2">
+                            <DialogTitle className="text-xl">Invoice Details</DialogTitle>
+                            <DialogDescription>
+                                Enter the details below to generate a new invoice in the system.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        {/* Scrollable Body */}
+
+                        <div className="flex-1 overflow-y-auto px-6 py-4">
+
+                            <FieldGroup className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                                <Field>
+                                    <FieldLabel>Select Client</FieldLabel>
+                                    <Select<ClientOption, false>
+                                        instanceId={`client`}
+                                        options={formattedClients}
+                                        value={formattedClients.find(
+                                            (option) => option.value === data.clientId
+                                        )}
+                                        onChange={(selected) => {
+                                            const client = ClientList?.find(
+                                                (c) => c.id === Number(selected?.value)
+                                            )
+
+                                            setData((prev) => ({
+                                                ...prev,
+                                                clientId: selected?.value || 0,
+                                                clientGst: client?.gst_number || "",
+                                                reference: client?.assigned_person || ""
+
+
+                                            }))
+                                        }}
+                                        placeholder="Select Client..."
+
+                                        menuPortalTarget={mounted ? document.body : undefined}
+                                        menuPosition="fixed"
+                                        menuShouldBlockScroll={true}
+
+                                        unstyled
+                                        styles={selectStyles}
+                                        classNames={selectClassNames}
+                                    />
+                                </Field>
+
+                                <Field>
+                                    <FieldLabel>Invoice Type</FieldLabel>
+                                    <Select<Option, false>
+                                        instanceId="invoiceType"
+                                        options={invoiceTypeOptions}
+                                        value={invoiceTypeOptions.find(
+                                            (option) => option.value === data.invoiceType
+                                        ) || null}
+                                        onChange={(selected) =>
+                                            setData((prev) => ({
+                                                ...prev,
+                                                invoiceType: selected?.value || "GST",
+                                            }))
+                                        }
+                                        placeholder="Select service..."
+
+                                        menuPortalTarget={mounted ? document.body : undefined}
+                                        menuPosition="fixed"
+                                        menuShouldBlockScroll={true}
+
+                                        unstyled
+                                        styles={selectStyles}
+                                        classNames={selectClassNames}
+                                    />
+                                </Field>
+
+                                <Field>
+                                    <Label htmlFor="InvoiceId">Invoice ID</Label>
+                                    <Input id="invoiceId" name="invoiceId" placeholder="Invoice ID" required
+                                        value={data.invoiceId}
+                                        className="h-10 mb-0 pb-0"
+                                        onChange={(e) =>
+                                            setData(prev => ({
+                                                ...prev,
+                                                invoiceId: e.target.value
+                                            }))
+                                        }
+                                    />
+                                </Field>
+
+                                <Field>
+                                    <Label htmlFor="invoiceDate">Invoice Date</Label>
+                                    <Input id="invoiceDate" name="invoiceDate" placeholder="dd/mm/yyyy" type="date" required
+                                        value={formatDate(data.invoiceDate)}
+                                        className="h-10"
+                                        onChange={(e) =>
+                                            setData(prev => ({
+                                                ...prev,
+                                                invoiceDate: new Date(e.target.value)
+                                            }))
+                                        }
+                                    />
+                                </Field>
+
+                                <Field>
+                                    <Label htmlFor="clientGst">Client GST</Label>
+                                    <Input id="clientGst" name="clientGst" placeholder="22AAAAA0000A1Z5" required disabled
+                                        value={data.clientGst}
+                                        className="h-10"
+                                    />
+                                </Field>
+                                <Field>
+                                    <Label htmlFor="poNo">PO No</Label>
+                                    <Input id="poNo" name="poNo" placeholder="999999XXXX" required
+                                        value={data.PONo}
+                                        className="h-10"
+                                        onChange={(e) =>
+                                            setData(prev => ({
+                                                ...prev,
+                                                PONo: e.target.value
+                                            }))
+                                        }
+                                    />
+                                </Field>
+                                <Field>
+                                    <Label htmlFor="PODate">PO Date</Label>
+                                    <Input id="PODate" name="PODate" placeholder="dd/mm/yyyy" required
+                                        value={formatDate(data.invoiceDate)}
+                                        className="h-10"
+                                        type="date"
+                                        onChange={(e) =>
+                                            setData(prev => ({
+                                                ...prev,
+                                                PODate: new Date(e.target.value)
+                                            }))
+                                        }
+                                    />
+                                </Field>
+                                <Field>
+                                    <Label htmlFor="reference">Reference</Label>
+                                    <Input id="reference" name="reference" placeholder="Name" required
+                                        value={data.reference}
+                                        className="h-10"
+                                        onChange={(e) =>
+                                            setData(prev => ({
+                                                ...prev,
+                                                reference: e.target.value
+                                            }))
+                                        }
+                                    />
+                                </Field>
+                            </FieldGroup>
+                            <div className="h-4"></div>
+
+                            {items.map((item, index) => (
+                                <FieldGroup
+                                    key={item.id}
+                                    className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-4 mt-4"
+                                >
+                                    {/* Service */}
+                                    <Field>
+                                        <Label>Service Name</Label>
+
+                                        <CreatableSelect<ServiceOptions>
+                                            instanceId={`service-${index}`}
+                                            options={formattedServices}
+
+                                            value={
+                                                formattedServices.find(
+                                                    (opt) => Number(opt.value) === item.serviceId
+                                                ) || (item.service
+                                                    ? { label: item.service, value: item.service }
+                                                    : null)
+                                            }
+
+                                            onChange={(selected) => {
+
+                                                const servive = ServicesList?.find(
+                                                    (c) => c.id === Number(selected?.value)
+                                                )
+
+                                                setItems((prev) =>
+                                                    prev.map((it) => {
+                                                        if (it.id !== item.id) return it
+
+                                                        if (!selected) {
+                                                            return { ...it, serviceId: null, service: null }
+                                                        }
+
+                                                        const value = selected.value
+
+                                                        // Existing service
+                                                        if (!isNaN(Number(value))) {
+                                                            return {
+                                                                ...it,
+                                                                serviceId: Number(value),
+                                                                service: selected.label,
+                                                                hsn: String(servive?.hsn_code)
+                                                            }
+                                                        }
+
+                                                        // Created service
+                                                        return {
+                                                            ...it,
+                                                            serviceId: null,
+                                                            service: value,
+                                                        }
+                                                    })
+                                                )
+                                            }}
+
+                                            onInputChange={(input) => {
+                                                setInputValues((prev) => ({
+                                                    ...prev,
+                                                    [item.id]: input,
+                                                }))
+                                            }}
+
+                                            onBlur={() => {
+                                                const input = inputValues[item.id]
+
+                                                if (
+                                                    !input ||
+                                                    item.serviceId ||
+                                                    input === item.service
+                                                ) return
+
+                                                setItems((prev) =>
+                                                    prev.map((it) =>
+                                                        it.id === item.id
+                                                            ? {
+                                                                ...it,
+                                                                serviceId: null,
+                                                                service: input,
+                                                            }
+                                                            : it
+                                                    )
+                                                )
+                                            }}
+
+                                            placeholder="Select service..."
+                                            menuPortalTarget={mounted ? document.body : undefined}
+                                            menuPosition="fixed"
+                                            menuShouldBlockScroll={true}
+
+                                            unstyled
+                                            styles={selectStyles}
+                                            classNames={selectClassNames}
+                                        />
+
+                                    </Field>
+
+                                    {/* HSN */}
+                                    <Field>
+                                        <Label>HSN code</Label>
+                                        <Input
+                                            value={item.hsn}
+                                            placeholder="HSN code"
+                                            className="h-10"
+                                            onChange={(e) =>
+                                                setItems((prev) =>
+                                                    prev.map((it) =>
+                                                        it.id === item.id
+                                                            ? { ...it, hsn: e.target.value.toUpperCase() }
+                                                            : it
+                                                    )
+                                                )
+                                            }
+                                        />
+                                    </Field>
+
+                                    {/* Duration */}
+                                    <Field>
+                                        <Label>Expiry Date</Label>
+                                        <Input
+                                            type="date"
+                                            value={formatDate(item.expiry)}
+                                            className="h-10"
+                                            onChange={(e) =>
+                                                setItems((prev) =>
+                                                    prev.map((it) =>
+                                                        it.id === item.id
+                                                            ? { ...it, expiry: new Date(e.target.value) }
+                                                            : it
+                                                    )
+                                                )
+                                            }
+                                        />
+                                    </Field>
+
+
+                                    {/* Cost */}
+                                    <Field>
+                                        <Label>Cost</Label>
+                                        <Input
+                                            value={item.cost}
+                                            placeholder="Cost"
+                                            className="h-10"
+                                            onChange={(e) =>
+                                                setItems((prev) =>
+                                                    prev.map((it) =>
+                                                        it.id === item.id
+                                                            ? { ...it, cost: e.target.value }
+                                                            : it
+                                                    )
+                                                )
+                                            }
+                                        />
+                                    </Field>
+
+                                    {/* Delete */}
+                                    <Field className="flex items-end justify-end">
+                                        <button
+                                            type="button"
+                                            onClick={() => deleteItem(item.id)}
+                                            className="border border-muted rounded-lg group hover:bg-muted"
+                                        >
+                                            <Trash className="text-red-700 m-2 group-hover:text-primary" />
+                                        </button>
+                                    </Field>
+                                </FieldGroup>
+                            ))}
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="mt-4"
+                                onClick={() =>
+                                    setItems((prev) => [
+                                        ...prev,
+                                        {
+                                            id: crypto.randomUUID(),
+                                            service: null,
+                                            serviceId: null,
+                                            igst: null,
+                                            cgst: null,
+                                            sgst: null,
+                                            hsn: "",
+                                            expiry: new Date,
+                                            cost: "",
+                                        },
+                                    ])
+                                }
+                            >
+                                + Add More
+                            </Button>
+
+                            <div className="mt-10">
+                                <h1 className="text-xl font-semibold">GST Details</h1>
+
+                                <div className="mt-4 space-y-3">
+
+                                    <div className="grid grid-cols-3 items-center border-b pb-2">
+                                        <span className="text-muted-foreground">IGST</span>
+
+                                        <span className="text-muted-foreground flex items-center justify-center">
+                                            <IndianRupee size={16} />
+                                            {formatCurrency(igstAmount)}
+                                        </span>
+
+                                        <span className="font-medium text-right">
+                                            {isIGST ? "18" : "0"}%
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 items-center border-b pb-2">
+                                        <span className="text-muted-foreground">CGST</span>
+
+                                        <span className="text-muted-foreground flex items-center justify-center">
+                                            <IndianRupee size={16} />
+                                            {formatCurrency(cgstAmount)}
+                                        </span>
+
+                                        <span className="font-medium text-right">
+                                            {isIGST ? "0" : "9"}%
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 items-center">
+                                        <span className="text-muted-foreground">SGST</span>
+
+                                        <span className="text-muted-foreground flex items-center justify-center">
+                                            <IndianRupee size={16} />
+                                            {formatCurrency(sgstAmount)}
+                                        </span>
+
+                                        <span className="font-medium text-right">
+                                            {isIGST ? "0" : "9"}%
+                                        </span>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <div className="mt-10">
+                                <h1 className="text-xl font-semibold">Billing Details</h1>
+
+                                <div className="mt-4 space-y-3">
+                                    <div className="flex justify-between border-b pb-2">
+                                        <span className="text-muted-foreground">Sub Total</span>
+                                        <span className="font-medium flex items-center"><IndianRupee size={16} />{formatCurrency(bill.subTotal)}</span>
+                                    </div>
+
+                                    <div className="flex justify-between border-b pb-2">
+                                        <span className="text-muted-foreground">Total Tax</span>
+                                        <span className="font-medium flex items-center"><IndianRupee size={16} />{formatCurrency(bill.totalTax)}</span>
+                                    </div>
+
+                                    <div className="flex justify-between">
+                                        <span className="text-primary">Grand Total</span>
+                                        <span className="font-medium flex items-center"><IndianRupee size={16} />{formatCurrency(bill.grandTotal)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        {/* Clean Footer */}
+                        <div className="p-6 pt-4 flex justify-end gap-3">
+                            <DialogClose asChild>
+                                <Button variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button type="submit">Submit</Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+        </div >
+    )
+}
+
+export default AddInvoicePopup
