@@ -2,7 +2,7 @@
 
 import { GST } from "../config/gst";
 import db from "../dbPool";
-import { InvoiceData, InvoiceItem, Service } from "../types/dataTypes";
+import { FetchedInvoice, InvoiceApiResponse, InvoiceData, InvoiceItem, Service } from "../types/dataTypes";
 
 const round = (val: number) => Math.round(val * 100) / 100;
 
@@ -115,8 +115,11 @@ export const insertInvoice = async (
         cgst,
         sgst,
         grand_total,
+        pono,
+        podate,
+        reference,
         invoice_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         data.clientId,
@@ -125,6 +128,9 @@ export const insertInvoice = async (
         totalCGST,
         totalSGST,
         grandTotal,
+        data.PONo,
+        data.PODate,
+        data.reference,
         data.invoiceId,
       ]
     );
@@ -235,6 +241,9 @@ export const fetchInvoiceById = async (invoiceId: number) => {
   'igst', i.igst,
   'cgst', i.cgst,
   'sgst', i.sgst,
+  'poNo', i.pono,
+  'poDate', i.podate,
+  'reference', i.reference,
   'grandTotal', i.grand_total,
   'createdAt', i.created_at,
 
@@ -269,7 +278,7 @@ export const fetchInvoiceById = async (invoiceId: number) => {
     WHERE ii.invoice_id = i.id
   )
 
-) AS invoice_json
+) AS invoice
 
 FROM invoice i
 LEFT JOIN clients c ON c.id = i.client_id
@@ -281,7 +290,7 @@ WHERE i.id = ?;
 
     return {
       success: true,
-      data: invoiceRows[0]
+      data: invoiceRows[0] as InvoiceApiResponse
     };
 
   } catch (error) {

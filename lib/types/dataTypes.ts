@@ -112,3 +112,74 @@ export type Invoice = {
   grand_total: string;    
   created_at: string;     
 };
+
+export type InvoiceApiResponse = {
+  invoice: FetchedInvoice;
+};
+
+export type FetchedInvoice = {
+  id: number;
+  invoiceId: string;
+  createdAt: string;
+
+  subTotal: number;
+  grandTotal: number;
+
+  cgst: number;
+  sgst: number;
+  igst: number;
+
+  poNo: string;
+  poDate: string;
+  reference: string;
+
+  items: FetchedInvoiceItem[];
+  client: Client;
+};
+
+export type FetchedInvoiceItem = {
+  id: number;
+  serviceId: number;
+
+  service: string;
+  hsn: string;
+
+  cost: number;
+
+  cgst: number;
+  sgst: number;
+  igst: number;
+
+  expiry: string;
+};
+
+export type Client = {
+  id: number;
+
+  companyName: string;
+  gstNumber: string;
+
+  email: string;
+  phone: string;
+
+  address: string | null;
+
+  city: string;
+  state: string;
+  pincode: string;
+};
+
+export type BankAccount = {
+  id: number;
+  company_id: number;
+
+  account_name: string;
+  account_number: string;
+
+  ifsc_code: string;
+  bank_name: string;
+  branch: string;
+
+  created_at: string;
+  updated_at: string;
+};

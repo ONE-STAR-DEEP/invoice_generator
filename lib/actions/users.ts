@@ -3,12 +3,10 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import db from "../dbPool";
-import { SellerCompany, User } from "../types/dataTypes";
+import { BankAccount, SellerCompany, User } from "../types/dataTypes";
 import bcrypt from "bcrypt"
 
 import crypto from "crypto"
-import { generateOTP } from "../otp";
-import { error } from "console";
 import { getCurrentUserSafe } from "../sessionCheck";
 
 const algorithm = "aes-256-cbc"
@@ -325,6 +323,40 @@ export const fetchCompanyData = async () => {
     return {
       success: true,
       data: rows[0] as SellerCompany,
+    };
+  } catch (error) {
+    console.log(error);
+
+    return {
+      success: false,
+      data: null,
+      message: "Failed to fetch data",
+    };
+  } finally {
+    conn.release();
+  }
+};
+
+export const fetchBankAccountData = async () => {
+  const session = await getCurrentUserSafe();
+
+  const userId = session?.id;
+
+  if (!userId) {
+    return { success: false, message: "Unauthorized" };
+  }
+
+  const conn = await db.getConnection();
+
+  try {
+    const [rows]: any = await conn.query(
+      "SELECT * FROM company_bank_details",
+      [userId]
+    );
+
+    return {
+      success: true,
+      data: rows[0] as BankAccount,
     };
   } catch (error) {
     console.log(error);
