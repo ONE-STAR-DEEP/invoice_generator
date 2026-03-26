@@ -16,9 +16,7 @@ export async function getCurrentUserSafe() {
     if (typeof decoded === "string") return null;
 
     if (!decoded.id || !decoded.role) return null;
-
-    console.log(decoded)
-
+    
     return {
       id: Number(decoded.id),
       role: decoded.role as SessionUser["role"],

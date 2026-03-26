@@ -407,7 +407,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                         <div className="flex-1">
 
                             {/* HEADER */}
-                            <header className="flex flex-col items-center border-b pb-4 mb-4 print:no-break">
+                            <header className="flex flex-col items-center pb-4 mb-4 print:no-break">
                                 <div className="flex w-full items-center justify-between">
                                     <div className="flex items-center font-medium">
                                         <div className="flex items-center justify-center rounded-md text-primary">
@@ -448,13 +448,10 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                 </div> */}
                             </header>
 
-                            <section className="grid grid-cols-2 justify-between mb-4 print:no-break">
-                                <div className="space-y-6">
-
+                            <section className="grid grid-cols-2 border divide-x justify-between mb-8 print:no-break">
+                                <div className="p-2">
                                     {/* Seller Details */}
-                                    <div>
-                                        <p className="font-semibold mb-2">Seller Details</p>
-
+                                    <div className="space-y-3">
                                         <div className="grid grid-cols-[125px_1fr] gap-y-1 text-sm">
                                             <span className="font-medium">Name:</span>
                                             <span className="font-bold">{companyData?.name}</span>
@@ -480,14 +477,12 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                             <span className="font-medium">GST:</span>
                                             <span>{companyData?.gst}</span>
                                         </div>
-                                    </div>
 
-                                    <div>
-                                        <p className="font-semibold mb-2">Seller Bank Details</p>
+                                        <div className="w-full border-b border-gray-300"></div>
 
                                         <div className="grid grid-cols-[125px_1fr] gap-y-1 text-sm">
                                             <span className="font-medium">Account Name:</span>
-                                            <span className="font-bold">{accountData?.account_name}</span>
+                                            <span className="">{accountData?.account_name}</span>
 
                                             <span className="font-medium">Account No:</span>
                                             <span>{accountData?.account_number}</span>
@@ -505,34 +500,34 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                 </div>
 
 
-                                <div className="pl-5">
-                                    <h4 className="font-bold">Invoice Details</h4>
-                                    <div className="space-y-6">
-                                        <div>
-                                            <div className="grid grid-cols-[125px_1fr] gap-y-1 text-sm">
-                                                <span className="font-medium">Invoice No:</span>
-                                                <span className="font-bold">{invoiceData?.invoiceId}</span>
+                                <div className="p-2">
+                                    <div className="space-y-3">
 
-                                                <span className="font-medium">Invoice Date:</span>
-                                                <span>
-                                                    {formatIST(invoiceData?.createdAt)}
-                                                </span>
+                                        <div className="grid grid-cols-[125px_1fr] gap-y-1 text-sm">
+                                            <span className="font-medium">Invoice No:</span>
+                                            <span className="font-bold">{invoiceData?.invoiceId}</span>
 
-                                                <span className="font-medium">GST No:</span>
-                                                <span>{invoiceData?.client.gstNumber}</span>
+                                            <span className="font-medium">Invoice Date:</span>
+                                            <span>
+                                                {formatIST(invoiceData?.createdAt)}
+                                            </span>
 
-                                                <span className="font-medium">PO No:</span>
-                                                <span>
-                                                    {invoiceData?.poNo}
-                                                </span>
+                                            <span className="font-medium">GST No:</span>
+                                            <span>{invoiceData?.client.gstNumber}</span>
 
-                                                <span className="font-medium">PO Date:</span>
-                                                <span>{formatDateOnly(invoiceData?.poDate)}</span>
+                                            <span className="font-medium">PO No:</span>
+                                            <span>
+                                                {invoiceData?.poNo}
+                                            </span>
 
-                                                <span className="font-medium">Reference:</span>
-                                                <span>{invoiceData?.reference}</span>
-                                            </div>
+                                            <span className="font-medium">PO Date:</span>
+                                            <span>{formatDateOnly(invoiceData?.poDate)}</span>
+
+                                            <span className="font-medium">Reference:</span>
+                                            <span>{invoiceData?.reference}</span>
                                         </div>
+
+                                        <div className="w-full border-b border-gray-300"></div>
 
                                         {/* Bank Details */}
                                         <div>
@@ -564,9 +559,9 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                     <thead className="bg-secondary">
                                         <tr>
                                             <th className="border p-2">S No</th>
-                                            <th className="border p-2">Service</th>
+                                            <th className="border p-2 text-left">Service</th>
                                             <th className="border p-2">HSN Code</th>
-                                            
+
                                             <th className="border p-2">Cost</th>
                                         </tr>
                                     </thead>
@@ -575,7 +570,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                         {invoiceData?.items.map((item, i) => (
                                             <tr key={i} className="text-center print:break-inside-avoid">
                                                 <td className="border p-2">{i + 1}</td>
-                                                <td className="border p-2">{item.service}</td>
+                                                <td className="border p-2 text-left">{item.service}</td>
                                                 <td className="border p-2">{item.hsn}</td>
                                                 <td className="border p-2 text-right">{formatCurrency(item.cost)}</td>
                                             </tr>
@@ -585,9 +580,9 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                             </section>
 
                             {/* TOTALS */}
-                            <section className="mt-6 space-y-6 print:no-break">
-                                <div className="flex justify-end">
-                                    <div className="w-1/3">
+                            <section className="border mt-6 print:no-break">
+                                <div className="border-b flex justify-end">
+                                    <div className="border-l p-2 w-1/3">
                                         <div className="flex justify-between">
                                             <span>Subtotal</span>
                                             <span>{formatCurrency(invoiceData?.subTotal)}</span>
@@ -616,9 +611,9 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="w-full flex flex-col items-end">
+                                <div className="w-full flex flex-col items-end p-2">
                                     <p>Grand Total Payable(in words)</p>
-                                    <p>INR(₹): {numberToWords(invoiceData?.grandTotal || 0)}</p>
+                                    <p className="font-bold">INR(₹): {numberToWords(invoiceData?.grandTotal || 0)}</p>
                                 </div>
 
                             </section>
