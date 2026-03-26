@@ -196,4 +196,5 @@ export type UserData = {
 export type SessionUser = {
   id: number
   role: "admin" | "user" | "accounts"
+  iss: string
 }
