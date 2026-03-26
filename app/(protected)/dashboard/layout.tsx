@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/SystemTheme/theme-toggle";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { getCurrentUserSafe } from "@/lib/sessionCheck";
+import { AuthProvider } from "@/components/Users/roleContext";
 
 export default async function ProtectedLayout({
     children,
@@ -13,12 +14,15 @@ export default async function ProtectedLayout({
 }) {
     
     const user = await getCurrentUserSafe();
+    console.log(user)
     if(!user){
         redirect("/")
     }
 
     return (
         <div className="min-h-screen flex flex-col">
+            <AuthProvider user={user}>
+
             <SidebarProvider className="flex flex-1 flex-col">
 
                 {/* Top Bar */}
@@ -43,6 +47,7 @@ export default async function ProtectedLayout({
                 </div>
 
             </SidebarProvider>
+            </AuthProvider>
         </div>
     );
 }

@@ -12,7 +12,7 @@ export const columns: ColumnDef<ClientData>[] = [
     accessorKey: "email",
     header: "Email",
     cell: ({ row }) => (
-      <span className="text-blue-600">{row.getValue("email")}</span>
+      <span className="">{row.getValue("email")}</span>
     ),
   },
   {

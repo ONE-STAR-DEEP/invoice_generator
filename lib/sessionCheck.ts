@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
-import { redirect } from "next/navigation";
+import { SessionUser } from "./types/dataTypes";
 
 export async function getCurrentUserSafe() {
   try {
@@ -15,7 +15,12 @@ export async function getCurrentUserSafe() {
 
     if (typeof decoded === "string") return null;
 
-    return decoded;
+    if (!decoded.id || !decoded.role) return null;
+
+    return {
+      id: Number(decoded.id),
+      role: decoded.role as SessionUser["role"],
+    };
   } catch {
     return null;
   }

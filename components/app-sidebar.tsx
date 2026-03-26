@@ -9,11 +9,12 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { BarChart, CreditCard, Edit, FileText, Home, LogOut, Users } from "lucide-react"
+import { BarChart, CircleUser, CreditCard, Edit, FileText, Home, LogOut, LogOutIcon, UserPlus, Users } from "lucide-react"
 import Image from "next/image"
 import { ThemeToggle } from "./SystemTheme/theme-toggle"
 import Link from "next/link"
 import LogoutButton from "./logout-button"
+import { logout } from "@/lib/logout"
 
 export function AppSidebar() {
     return (
@@ -84,20 +85,36 @@ export function AppSidebar() {
 
                 <SidebarGroup>
                     <SidebarGroupLabel>Account Actions</SidebarGroupLabel>
+
                     <SidebarMenu>
                         <SidebarMenuItem>
-                            <SidebarMenuButton>
-                                <Edit className="w-4 h-4" />
-                                Update
+                            <Link href="/dashboard/account">
+                                <SidebarMenuButton>
+                                    <CircleUser className="w-4 h-4" />
+                                    Account
+                                </SidebarMenuButton>
+                            </Link>
+                        </SidebarMenuItem>
+
+                        <SidebarMenuItem>
+                            <Link href="/dashboard/users">
+                                <SidebarMenuButton>
+                                    <UserPlus className="w-4 h-4" />
+                                    Users
+                                </SidebarMenuButton>
+                            </Link>
+                        </SidebarMenuItem>
+
+                        <SidebarMenuItem>
+                            <SidebarMenuButton onClick={logout} className="text-red-500">
+                                <LogOutIcon className="w-4 h-4" />
+                                Logout
                             </SidebarMenuButton>
                         </SidebarMenuItem>
 
-                        <SidebarMenuItem>
-                            <LogoutButton />
-                        </SidebarMenuItem>
                     </SidebarMenu>
-                </SidebarGroup>
 
+                </SidebarGroup>
             </SidebarContent>
 
             {/* Footer */}

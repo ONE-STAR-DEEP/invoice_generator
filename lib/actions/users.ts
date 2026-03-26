@@ -3,7 +3,7 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import db from "../dbPool";
-import { BankAccount, SellerCompany, User } from "../types/dataTypes";
+import { BankAccount, SellerCompany, SessionUser, User, UserData } from "../types/dataTypes";
 import bcrypt from "bcrypt"
 
 import crypto from "crypto"
@@ -35,9 +35,21 @@ export async function decrypt(encrypted: string, ivHex: string) {
 export const createUser = async (data: User) => {
     const conn = await db.getConnection();
 
+    
     try {
-        // const session = await getSessionUser();
-        // if (!session) throw new Error("Unauthorized");
+        if (!data.email || !data.password || !data.name || !data.mobile) {
+            return {
+                success: false,
+                message: "Missing required fields"
+            };
+        }
+        const session = await getCurrentUserSafe();
+
+        const userId = session?.id;
+
+        if (!userId || session.role !== "admin") {
+            return { success: false, message: "Unauthorized" };
+        }
 
         const iv = crypto.randomBytes(16)
 
@@ -47,14 +59,27 @@ export const createUser = async (data: User) => {
         } = data;
 
         const normalizedEmail = data.email.toLowerCase().trim()
+        const normalizedMobile = data.mobile.trim();
 
         const emailHash = crypto
             .createHash("sha256")
             .update(normalizedEmail)
             .digest("hex")
 
+        const [existing]: any = await conn.execute(
+            `SELECT id FROM users WHERE email_hash = ?`,
+            [emailHash]
+        );
+
+        if (existing.length > 0) {
+            return {
+                success: false,
+                message: "User already exists"
+            };
+        }
+
         const emailEncrypted = await encrypt(normalizedEmail, iv.toString("hex"))
-        const mobileEncrypted = await encrypt(data.mobile, iv.toString("hex"));
+        const mobileEncrypted = await encrypt(normalizedMobile, iv.toString("hex"));
 
         const passwordHash = await bcrypt.hash(data.password, 10);
 
@@ -260,8 +285,8 @@ export const verifyOtp = async (email: string, inputOTP: string) => {
 
         const token = jwt.sign(
             {
-                id: Number(user_id),
-                role: role
+                id: Number(user_id) as Number,
+                role: role as SessionUser["role"]
             },
             JWT_SECRET!,
             {
@@ -303,70 +328,114 @@ export const verifyOtp = async (email: string, inputOTP: string) => {
 
 }
 
+export const fetchUserData = async () => {
+    const session = await getCurrentUserSafe();
+
+    const userId = session?.id;
+
+    if (!userId) {
+        return { success: false, message: "Unauthorized" };
+    }
+
+    const conn = await db.getConnection();
+
+    try {
+        const [rows]: any = await conn.query(
+            "SELECT * FROM users"
+        );
+
+        const users = await Promise.all(
+            rows.map(async (user: any) => ({
+                id: user.id,
+                name: user.name,
+                email: await decrypt(user.email_encrypted, user.encryption_iv),
+                mobile: await decrypt(user.mobile_encrypted, user.encryption_iv),
+                role: user.role,
+                created_at: user.created_at
+            }))
+        );
+
+
+        return {
+            success: true,
+            data: users as UserData[],
+        };
+    } catch (error) {
+        console.log(error);
+
+        return {
+            success: false,
+            data: null,
+            message: "Failed to fetch data",
+        };
+    } finally {
+        conn.release();
+    }
+};
+
 export const fetchCompanyData = async () => {
-  const session = await getCurrentUserSafe();
+    const session = await getCurrentUserSafe();
 
-  const userId = session?.id;
+    const userId = session?.id;
 
-  if (!userId) {
-    return { success: false, message: "Unauthorized" };
-  }
+    if (!userId) {
+        return { success: false, message: "Unauthorized" };
+    }
 
-  const conn = await db.getConnection();
+    const conn = await db.getConnection();
 
-  try {
-    const [rows]: any = await conn.query(
-      "SELECT * FROM companies",
-      [userId]
-    );
+    try {
+        const [rows]: any = await conn.query(
+            "SELECT * FROM companies"
+        );
 
-    return {
-      success: true,
-      data: rows[0] as SellerCompany,
-    };
-  } catch (error) {
-    console.log(error);
+        return {
+            success: true,
+            data: rows[0] as SellerCompany,
+        };
+    } catch (error) {
+        console.log(error);
 
-    return {
-      success: false,
-      data: null,
-      message: "Failed to fetch data",
-    };
-  } finally {
-    conn.release();
-  }
+        return {
+            success: false,
+            data: null,
+            message: "Failed to fetch data",
+        };
+    } finally {
+        conn.release();
+    }
 };
 
 export const fetchBankAccountData = async () => {
-  const session = await getCurrentUserSafe();
+    const session = await getCurrentUserSafe();
 
-  const userId = session?.id;
+    const userId = session?.id;
 
-  if (!userId) {
-    return { success: false, message: "Unauthorized" };
-  }
+    if (!userId) {
+        return { success: false, message: "Unauthorized" };
+    }
 
-  const conn = await db.getConnection();
+    const conn = await db.getConnection();
 
-  try {
-    const [rows]: any = await conn.query(
-      "SELECT * FROM company_bank_details",
-      [userId]
-    );
+    try {
+        const [rows]: any = await conn.query(
+            "SELECT * FROM company_bank_details",
+            [userId]
+        );
 
-    return {
-      success: true,
-      data: rows[0] as BankAccount,
-    };
-  } catch (error) {
-    console.log(error);
+        return {
+            success: true,
+            data: rows[0] as BankAccount,
+        };
+    } catch (error) {
+        console.log(error);
 
-    return {
-      success: false,
-      data: null,
-      message: "Failed to fetch data",
-    };
-  } finally {
-    conn.release();
-  }
+        return {
+            success: false,
+            data: null,
+            message: "Failed to fetch data",
+        };
+    } finally {
+        conn.release();
+    }
 };

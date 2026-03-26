@@ -110,6 +110,7 @@ export function LoginForm({
                 <Input
                   id="email"
                   type="email"
+                  value={data.email}
                   placeholder="m@example.com"
                   required
                   className="bg-background"
@@ -136,6 +137,7 @@ export function LoginForm({
                 <Input
                   id="password"
                   type="password"
+                  value={data.password}
                   required
                   placeholder="xxxxxxxxxx"
                   className="bg-background"
@@ -174,8 +176,7 @@ export function LoginForm({
                   placeholder="******"
                   className="bg-background"
                   onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, ""); // remove non-digits
-
+                    const value = e.target.value.replace(/\D/g, "");
                     setOtp(value)
                   }}
                 />

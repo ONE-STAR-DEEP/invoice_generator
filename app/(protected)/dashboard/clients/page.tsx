@@ -8,7 +8,6 @@ import { fetchClients } from '@/lib/actions/clients'
 const Clients = async () => {
 
   const data = await fetchClients();
-  console.log(data)
 
   return (
     <div className="flex flex-col flex-1 space-y-6 min-h-0">

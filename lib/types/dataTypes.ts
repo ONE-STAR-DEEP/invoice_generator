@@ -183,3 +183,17 @@ export type BankAccount = {
   created_at: string;
   updated_at: string;
 };
+
+export type UserData = {
+  id: number;
+  name: string;
+  email: string;
+  mobile: string;
+  role: "admin" | "user" | "accounts";
+  created_at: string;
+};
+
+export type SessionUser = {
+  id: number
+  role: "admin" | "user" | "accounts"
+}
