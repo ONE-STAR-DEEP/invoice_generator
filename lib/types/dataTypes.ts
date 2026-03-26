@@ -110,6 +110,7 @@ export type Invoice = {
   client_id: number;
   sub_total: string;  
   grand_total: string;    
+  status: "paid" | "pending"
   created_at: string;     
 };
 
@@ -124,6 +125,7 @@ export type FetchedInvoice = {
 
   subTotal: number;
   grandTotal: number;
+  status: "paid" | "pending"
 
   cgst: number;
   sgst: number;
@@ -198,3 +200,32 @@ export type SessionUser = {
   role: "admin" | "user" | "accounts"
   iss: string
 }
+
+export type PendingInvoice = {
+  id: number;
+  invoice_id: string;
+  client_id: number;
+  sub_total: string;
+  grand_total: string;
+  created_at: string; 
+  status: "pending" | "paid";
+  company_name: string;
+  gst_number: string;
+  email: string;
+  phone: string;
+  city: string;
+  state: string;
+  total_items: number;
+};
+
+export type InvoiceServiceRow = {
+  id: number;
+  invoice_id: string;
+  invoiceId: number;
+  service_id: number;
+  cost: string;
+  expiry: string;
+  status: "pending" | "active" | "expired";
+  name: string;
+  hsn_code: string;
+};

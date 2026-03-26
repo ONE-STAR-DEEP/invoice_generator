@@ -201,7 +201,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
     return (
         <div>
             <Button type="button" className="p-4" onClick={() => { setOpen(true) }}>
-                <Plus /> Create Invoice
+                <Plus /> Generate Invoice
             </Button>
 
             <Dialog open={open} onOpenChange={(val) => {

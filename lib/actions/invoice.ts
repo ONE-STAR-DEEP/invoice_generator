@@ -2,7 +2,21 @@
 
 import { GST } from "../config/gst";
 import db from "../dbPool";
-import { FetchedInvoice, InvoiceApiResponse, InvoiceData, InvoiceItem, Service } from "../types/dataTypes";
+import { getCurrentUserSafe } from "../sessionCheck";
+import { InvoiceApiResponse, InvoiceData, InvoiceItem, InvoiceServiceRow, Service } from "../types/dataTypes";
+import { RowDataPacket } from "mysql2";
+
+interface StatsResult extends RowDataPacket {
+  total_sales: number | null;
+  pending_amount: number | null;
+  paid_amount: number | null;
+}
+
+type GroupedInvoices = {
+  paid: any[];
+  pending: any[];
+};
+
 
 const round = (val: number) => Math.round(val * 100) / 100;
 
@@ -189,6 +203,7 @@ export const fetchAllInvoices = async () => {
     i.sub_total,
     i.grand_total,
     i.created_at,
+    i.status,
 
     c.company_name,
     c.gst_number,
@@ -227,6 +242,138 @@ export const fetchAllInvoices = async () => {
   }
 };
 
+export const fetchPendingInvoices = async (
+  page = 1,
+  limit = 10
+) => {
+  const conn = await db.getConnection();
+
+  try {
+    const offset = (page - 1) * limit;
+
+    const [rows]: any = await conn.execute(
+      `
+      SELECT 
+        i.id,
+        i.invoice_id,
+        i.client_id,
+        i.sub_total,
+        i.grand_total,
+        i.created_at,
+        i.status,
+
+        c.company_name,
+        c.gst_number,
+        c.email,
+        c.phone,
+        c.city,
+        c.state,
+
+        COUNT(ii.id) AS total_items
+
+      FROM invoice i
+      LEFT JOIN clients c ON c.id = i.client_id
+      LEFT JOIN invoice_items ii ON ii.invoice_id = i.id
+
+      WHERE i.status = 'pending'
+
+      GROUP BY i.id
+      ORDER BY i.created_at ASC
+
+      LIMIT ${limit} OFFSET ${offset}
+      `
+    );
+
+    const [[{ total }]]: any = await conn.execute(`
+      SELECT COUNT(*) AS total
+      FROM invoice
+      WHERE status = 'pending'
+    `);
+
+    return {
+      success: true,
+      data: rows,
+      page,
+      limit,
+      total, 
+      totalPages: Math.ceil(total / limit),
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      success: false,
+      message: "Fetch failed",
+    };
+  } finally {
+    conn.release();
+  }
+};
+
+export const fetchServicesByExpiry = async (
+  page = 1,
+  limit = 10
+) => {
+  const conn = await db.getConnection();
+
+  try {
+    const offset = (page - 1) * limit;
+
+    const [rows] = await conn.execute(
+      `
+      SELECT 
+        ii.id,
+        i.invoice_id,
+        i.id AS invoiceId,
+        ii.service_id,
+        ii.cost,
+        ii.expiry,
+        ii.status,
+
+        s.name,
+        s.hsn_code
+
+      FROM invoice_items ii
+
+      JOIN services s ON s.id = ii.service_id
+      JOIN invoice i ON i.id = ii.invoice_id
+
+      WHERE ii.expiry IS NOT NULL
+        AND ii.expiry BETWEEN UTC_TIMESTAMP() 
+        AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY)
+
+      ORDER BY ii.expiry ASC
+
+      LIMIT ${limit} OFFSET ${offset}
+      `);
+
+    const [[{ total }]]: any = await conn.execute(`
+      SELECT COUNT(*) AS total
+      FROM invoice_items ii
+      WHERE ii.expiry IS NOT NULL
+        AND ii.expiry BETWEEN UTC_TIMESTAMP() 
+        AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY)
+    `);
+
+    return {
+      success: true,
+      data: rows as InvoiceServiceRow[],
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    };
+  } catch (error) {
+    console.error("Error fetching services by expiry:", error);
+
+    return {
+      success: false,
+      message: "Failed to fetch services",
+    };
+  } finally {
+    conn.release();
+  }
+};
+
 export const fetchInvoiceById = async (invoiceId: number) => {
   const conn = await db.getConnection();
 
@@ -244,6 +391,7 @@ export const fetchInvoiceById = async (invoiceId: number) => {
   'poNo', i.pono,
   'poDate', i.podate,
   'reference', i.reference,
+  'status', i.status,
   'grandTotal', i.grand_total,
   'createdAt', i.created_at,
 
@@ -301,5 +449,54 @@ WHERE i.id = ?;
     };
   } finally {
     conn.release();
+  }
+};
+
+export const updateStatus = async (invoiceId: number) => {
+  try {
+    const session = await getCurrentUserSafe();
+    const userId = session?.id;
+
+    if (!userId || session.iss !== "thaverTechInvoiceGenerator") {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const [result] = await db.query(
+      "UPDATE invoice SET status = ? WHERE id = ?",
+      ["paid", invoiceId]
+    );
+
+    return {
+      success: true,
+      message: "Invoice marked as paid",
+    };
+  } catch (error) {
+    console.error("Error updating status:", error);
+    return { success: false, message: "Something went wrong" };
+  }
+};
+
+export const fetchStats = async () => {
+  try {
+    const [rows] = await db.query<StatsResult[]>(`
+      SELECT 
+        SUM(grand_total) AS total_sales,
+        SUM(CASE WHEN status = 'pending' THEN grand_total ELSE 0 END) AS pending_amount,
+        SUM(CASE WHEN status = 'paid' THEN grand_total ELSE 0 END) AS paid_amount
+      FROM invoice
+    `);
+
+    return {
+      totalSales: rows[0]?.total_sales ?? 0,
+      pendingAmount: rows[0]?.pending_amount ?? 0,
+      paidAmount: rows[0]?.paid_amount ?? 0,
+    };
+  } catch (error) {
+    console.error("Error fetching stats:", error);
+    return {
+      totalSales: 0,
+      pendingAmount: 0,
+      paidAmount: 0,
+    };
   }
 };

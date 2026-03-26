@@ -1,51 +1,116 @@
-"use client"
-
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { fetchPendingInvoices, fetchServicesByExpiry, fetchStats } from "@/lib/actions/invoice"
+import { DataTable } from "@/components/dataTable"
+import { columns } from "@/components/Dashboard/pendingTableColumn"
+import { endingServicesColumns } from "@/components/Dashboard/endindServicesTableColumn"
+import AddInvoicePopup from "@/components/Invoice/addInvoicePopup"
+import { CircleCheckBig, Clock, TrendingUp, Users } from "lucide-react"
+import Pagination from "@/components/paginationComponent"
 
-const stats = [
-  { title: "Total Sales", value: "₹0" },
-  { title: "Pending", value: "₹0" },
-  { title: "Paid", value: "₹0" },
-  { title: "Clients", value: "₹0" },
-]
 
-const invoices = [
-  { id: "INV-001", client: "Client 1", amount: "₹5000", status: "Paid" },
-  { id: "INV-002", client: "Client 2", amount: "₹5000", status: "Paid" },
-  { id: "INV-003", client: "Client 3", amount: "₹5000", status: "Paid" },
-]
+const today = new Date().toLocaleDateString("en-IN", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
 
-export default function Dashboard() {
+export default async function Dashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    invoice_page?: string
+    invoice_limit?: string
+    service_page?: string
+    service_limit?: string
+  }>
+}) {
+  const params = await searchParams
+
+  const invoicePage = Number(params.invoice_page) || 1
+  const invoiceLimit = Number(params.invoice_limit) || 10
+
+  const servicePage = Number(params.service_page) || 1
+  const serviceLimit = Number(params.service_limit) || 10
+
+  const statData = await fetchStats()
+
+  const invoiceData = await fetchPendingInvoices(
+    invoicePage,
+    invoiceLimit
+  )
+
+  const expServices = await fetchServicesByExpiry(
+    servicePage,
+    serviceLimit
+  )
+
   return (
     <div className="flex flex-col gap-6 p-6">
 
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Dashboard
-        </h1>
-
-        <Button>
-          Create Invoice
-        </Button>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-linear-to-r from-primary to-secondary text-primary-foreground rounded-2xl p-6 shadow-md">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Welcome to Thaver Tech Invoice Generator 👋
+          </h1>
+          <p className="text-sm text-primary-foreground mt-1">
+            Manage invoices, track services, and monitor payments — all in one place.
+          </p>
+          <p className="text-sm text-primary-foreground mt-2">
+            {today}
+          </p>
+        </div>
+        <AddInvoicePopup />
       </div>
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((item, i) => (
-          <div
-            key={i}
-            className="rounded-xl border bg-card text-card-foreground p-5 shadow-sm"
-          >
-            <p className="text-sm text-muted-foreground">
-              {item.title}
-            </p>
-            <p className="text-2xl font-semibold mt-2">
-              {item.value}
-            </p>
-          </div>
-        ))}
+
+        <div
+          className="rounded-xl border bg-card text-card-foreground p-5 shadow-sm"
+        >
+          <p className="flex justify-between text-sm text-muted-foreground">
+            Total Sales <TrendingUp className="text-orange-500" size={20} />
+          </p>
+          <p className="text-2xl font-semibold ">
+            ₹{statData.totalSales}
+          </p>
+        </div>
+
+        <div
+          className="rounded-xl border bg-card text-card-foreground p-5 shadow-sm"
+        >
+          <p className="flex justify-between  text-sm text-muted-foreground">
+            Pending Amount <Clock className="text-emerald-500" size={20} />
+          </p>
+          <p className="text-2xl font-semibold mt-2">
+            ₹{statData.pendingAmount}
+          </p>
+        </div>
+
+        <div
+          className="rounded-xl border bg-card text-card-foreground p-5 shadow-sm"
+        >
+          <p className="flex justify-between text-sm text-muted-foreground">
+            Paid Amount <CircleCheckBig className="text-green-700" size={20} />
+          </p>
+          <p className="text-2xl font-semibold mt-2">
+            ₹{statData.paidAmount}
+          </p>
+        </div>
+
+        <div
+          className="rounded-xl border bg-card text-card-foreground p-5 shadow-sm"
+        >
+          <p className="flex justify-between text-sm text-muted-foreground">
+            Clients <Users className="text-yellow-500" size={20} />
+          </p>
+          <p className="text-2xl font-semibold mt-2">
+            { }
+          </p>
+        </div>
+
       </div>
 
       {/* Table Section */}
@@ -54,7 +119,7 @@ export default function Dashboard() {
         {/* Top Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b">
           <h2 className="text-lg font-semibold">
-            Recent Invoices
+            Pending Invoices
           </h2>
 
           <Input
@@ -63,37 +128,49 @@ export default function Dashboard() {
           />
         </div>
 
+
         {/* Table */}
-        <div className="w-full overflow-x-auto">
-          <div className="min-w-150">
 
-            {/* Header */}
-            <div className="grid grid-cols-4 text-sm font-medium text-muted-foreground px-4 py-3 border-b">
-              <span>Invoice #</span>
-              <span>Client</span>
-              <span>Amount</span>
-              <span>Status</span>
-            </div>
-
-            {/* Rows */}
-            {invoices.map((inv, i) => (
-              <div
-                key={i}
-                className="grid grid-cols-4 px-4 py-3 text-sm border-b last:border-0"
-              >
-                <span>{inv.id}</span>
-                <span>{inv.client}</span>
-                <span>{inv.amount}</span>
-
-                <span className="text-primary font-medium">
-                  {inv.status}
-                </span>
-              </div>
-            ))}
-          </div>
+        <div className="p-4">
+          <DataTable data={invoiceData.data ?? []} columns={columns} />
+          <Pagination
+            totalPages={invoiceData.totalPages ?? 0}
+            totalItems={invoiceData.total}
+            paramPrefix="invoice"
+          />
         </div>
 
       </div>
+
+      <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+
+        {/* Top Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b">
+          <h2 className="text-lg font-semibold">
+            Upcoming Ending Services
+          </h2>
+
+          <Input
+            placeholder="Search..."
+            className="w-full sm:w-64"
+          />
+        </div>
+
+
+        {/* Table */}
+
+        <div className="p-4">
+          <DataTable data={expServices.data ?? []} columns={endingServicesColumns} />
+          <Pagination
+            totalPages={expServices.totalPages ?? 0}
+            totalItems={expServices.total}
+            paramPrefix="service"
+          />
+        </div>
+
+      </div>
+
+
     </div>
   )
 }

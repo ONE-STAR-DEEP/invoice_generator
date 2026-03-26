@@ -13,6 +13,8 @@ const InvoicePage = async () => {
     const companyData = await fetchCompanyData();
     const allInvoices = await fetchAllInvoices();
 
+    console.log(allInvoices)
+
     return (
         <div className="flex flex-col flex-1 space-y-6 min-h-0">
 

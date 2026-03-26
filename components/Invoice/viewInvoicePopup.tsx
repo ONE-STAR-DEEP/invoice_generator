@@ -12,11 +12,12 @@ import {
 import { Button } from "../ui/button";
 import { Eye, Printer } from "lucide-react";
 import { useEffect, useState } from "react";
-import { fetchInvoiceById } from "@/lib/actions/invoice";
+import { fetchInvoiceById, updateStatus } from "@/lib/actions/invoice";
 import { BankAccount, FetchedInvoice, SellerCompany } from "@/lib/types/dataTypes";
 import Image from "next/image";
 import { fetchBankAccountData, fetchCompanyData } from "@/lib/actions/users";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const now = new Date();
 
@@ -131,6 +132,8 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
     const [invoiceData, setInvoiceData] = useState<FetchedInvoice | null>(null)
     const [companyData, setCompanyData] = useState<SellerCompany | null>(null)
     const [accountData, setAccountData] = useState<BankAccount | null>(null)
+
+    const router = useRouter()
 
     useEffect(() => {
         if (!open) return;
@@ -278,6 +281,18 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
         }, 500);
     };
 
+    const handleStatusChange = async () => {
+        try {
+            const res = await updateStatus(id)
+            if (res.success) {
+                router.refresh()
+                setOpen(false)
+            }
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
     //     invoice {
     //     "id": 1,
     //     "cgst": 0,
@@ -372,6 +387,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
     //         "updated_at": "2026-03-21T06:29:22.000Z"
     //     }
     // }
+
     return (
         <div>
             <Button type="button" variant={'ghost'} className="no-print p-2" onClick={() => { setOpen(true) }}>
@@ -396,6 +412,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                         <div className="flex items-center justify-start gap-2">
                             <DialogTitle className="text-xl">Invoice Details</DialogTitle>
                             <Printer onClick={handlePrint} size={28} className="text-primary hover:bg-secondary p-1 rounded-sm" />
+                            {invoiceData?.status === "pending" && <Button onClick={handleStatusChange}>Mark as Paid</Button>}
                         </div>
                         <DialogDescription>
                             Review complete invoice information including items, tax breakdown, and billing details.
@@ -448,109 +465,90 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                 </div> */}
                             </header>
 
-                            <section className="grid grid-cols-2 border divide-x justify-between mb-8 print:no-break">
-                                <div className="p-2">
-                                    {/* Seller Details */}
-                                    <div className="space-y-3">
-                                        <div className="grid grid-cols-[125px_1fr] gap-y-1 text-sm">
-                                            <span className="font-medium">Name:</span>
-                                            <span className="font-bold">{companyData?.name}</span>
+                            <section className="grid grid-cols-2 border justify-between mb-8 print:no-break">
 
-                                            <span className="font-medium">Address:</span>
-                                            <span>
-                                                {companyData?.address_line1}, {companyData?.city}-{companyData?.pincode}
-                                            </span>
+                                <div className="p-2 border-b border-r grid grid-cols-[120px_1fr] gap-y-1 text-sm">
+                                    <span className="font-medium">Name:</span>
+                                    <span className="font-bold">{companyData?.name}</span>
 
-                                            <span className="font-medium">Phone:</span>
-                                            <span>{companyData?.phone}</span>
+                                    <span className="font-medium">Address:</span>
+                                    <span>
+                                        {companyData?.address_line1}, {companyData?.city}-{companyData?.pincode}
+                                    </span>
 
-                                            <span className="font-medium">Email:</span>
-                                            <span>
-                                                <a href={`mailto:${companyData?.email}`}>
-                                                    {companyData?.email}
-                                                </a>
-                                            </span>
+                                    <span className="font-medium">Phone:</span>
+                                    <span>{companyData?.phone}</span>
 
-                                            <span className="font-medium">CIN:</span>
-                                            <span>{companyData?.cin}</span>
+                                    <span className="font-medium">Email:</span>
+                                    <span>
+                                        <a href={`mailto:${companyData?.email}`}>
+                                            {companyData?.email}
+                                        </a>
+                                    </span>
 
-                                            <span className="font-medium">GST:</span>
-                                            <span>{companyData?.gst}</span>
-                                        </div>
+                                    <span className="font-medium">CIN:</span>
+                                    <span>{companyData?.cin}</span>
 
-                                        <div className="w-full border-b border-gray-300"></div>
-
-                                        <div className="grid grid-cols-[125px_1fr] gap-y-1 text-sm">
-                                            <span className="font-medium">Account Name:</span>
-                                            <span className="">{accountData?.account_name}</span>
-
-                                            <span className="font-medium">Account No:</span>
-                                            <span>{accountData?.account_number}</span>
-
-                                            <span className="font-medium">IFSC:</span>
-                                            <span>{accountData?.ifsc_code}</span>
-
-                                            <span className="font-medium">Bank Name:</span>
-                                            <span>{accountData?.bank_name}</span>
-
-                                            <span className="font-medium">Branch:</span>
-                                            <span>{accountData?.branch}</span>
-                                        </div>
-                                    </div>
+                                    <span className="font-medium">GST:</span>
+                                    <span>{companyData?.gst}</span>
                                 </div>
 
+                                <div className="border-b p-2 grid grid-cols-[110px_1fr] gap-y-1 text-sm">
+                                    <span className="font-medium">Invoice No:</span>
+                                    <span className="font-bold">{invoiceData?.invoiceId}</span>
 
-                                <div className="p-2">
-                                    <div className="space-y-3">
+                                    <span className="font-medium">Invoice Date:</span>
+                                    <span>
+                                        {formatIST(invoiceData?.createdAt)}
+                                    </span>
 
-                                        <div className="grid grid-cols-[125px_1fr] gap-y-1 text-sm">
-                                            <span className="font-medium">Invoice No:</span>
-                                            <span className="font-bold">{invoiceData?.invoiceId}</span>
+                                    <span className="font-medium">GST No:</span>
+                                    <span>{invoiceData?.client.gstNumber}</span>
 
-                                            <span className="font-medium">Invoice Date:</span>
-                                            <span>
-                                                {formatIST(invoiceData?.createdAt)}
-                                            </span>
+                                    <span className="font-medium">PO No:</span>
+                                    <span>
+                                        {invoiceData?.poNo}
+                                    </span>
 
-                                            <span className="font-medium">GST No:</span>
-                                            <span>{invoiceData?.client.gstNumber}</span>
+                                    <span className="font-medium">PO Date:</span>
+                                    <span>{formatDateOnly(invoiceData?.poDate)}</span>
 
-                                            <span className="font-medium">PO No:</span>
-                                            <span>
-                                                {invoiceData?.poNo}
-                                            </span>
-
-                                            <span className="font-medium">PO Date:</span>
-                                            <span>{formatDateOnly(invoiceData?.poDate)}</span>
-
-                                            <span className="font-medium">Reference:</span>
-                                            <span>{invoiceData?.reference}</span>
-                                        </div>
-
-                                        <div className="w-full border-b border-gray-300"></div>
-
-                                        {/* Bank Details */}
-                                        <div>
-                                            <p className="font-semibold mb-2">Buyer / Bill to</p>
-                                            <span className="font-bold">{invoiceData?.client.companyName}</span>
-                                            <div className="grid grid-cols-[125px_1fr] gap-y-1 text-sm">
-
-                                                <span className="font-medium">Address:</span>
-                                                <span>{invoiceData?.client.address}, {invoiceData?.client.city}, {invoiceData?.client.state}, {invoiceData?.client.pincode}</span>
-
-                                                <span className="font-medium">Phone</span>
-                                                <span>{invoiceData?.client.phone}</span>
-
-                                                <span className="font-medium">Email:</span>
-                                                <span>{invoiceData?.client.email}</span>
-
-                                            </div>
-
-                                        </div>
-                                    </div>
+                                    <span className="font-medium">Reference:</span>
+                                    <span>{invoiceData?.reference}</span>
                                 </div>
 
+                                <div className="border-r p-2 grid grid-cols-[120px_1fr] gap-y-1 text-sm">
+                                    <span className="font-medium">Account Name:</span>
+                                    <span className="">{accountData?.account_name}</span>
 
+                                    <span className="font-medium">Account No:</span>
+                                    <span>{accountData?.account_number}</span>
+
+                                    <span className="font-medium">IFSC:</span>
+                                    <span>{accountData?.ifsc_code}</span>
+
+                                    <span className="font-medium">Bank Name:</span>
+                                    <span>{accountData?.bank_name}</span>
+
+                                    <span className="font-medium">Branch:</span>
+                                    <span>{accountData?.branch}</span>
+                                </div>
+
+                                <div className="p-2">
+                                    <div className="grid grid-cols-[110px_1fr] gap-y-1 text-sm">
+                                        <p className="font-semibold mb-2">Buyer / Bill to</p>
+                                        <span className="font-bold">{invoiceData?.client.companyName}</span>
+
+                                        <span className="font-medium">Address:</span>
+                                        <span>{invoiceData?.client.address}, {invoiceData?.client.city}, {invoiceData?.client.state}, {invoiceData?.client.pincode}</span>
+
+                                        <span className="font-medium">Phone</span>
+                                        <span>{invoiceData?.client.phone}</span>
+
+                                        <span className="font-medium">Email:</span>
+                                        <span>{invoiceData?.client.email}</span>
+                                    </div>
+                                </div>
                             </section>
 
                             {/* TABLE */}

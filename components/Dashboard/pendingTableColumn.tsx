@@ -2,7 +2,7 @@
 
 import { Invoice } from "@/lib/types/dataTypes"
 import { ColumnDef } from "@tanstack/react-table"
-import ViewInvoicePopup from "./viewInvoicePopup"
+import ViewInvoicePopup from "../Invoice/viewInvoicePopup"
 
 export const columns: ColumnDef<Invoice>[] = [
     {
@@ -57,26 +57,6 @@ export const columns: ColumnDef<Invoice>[] = [
                 {Number(row.getValue("total_items")).toLocaleString()}
             </div>
         ),
-    },
-    {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => {
-            const amount = Number(row.getValue("status"));
-            const status = row.original.status;
-
-            let color = "text-gray-600";
-
-            if (status === "paid") color = "text-green-600";
-            else if (status === "pending") color = "text-orange-500";
-            else if (status === "overdue") color = "text-red-600";
-
-            return (
-                <span className={`font-semibold ${color}`}>
-                    {row.original.status}
-                </span>
-            );
-        },
     },
     {
         accessorKey: "created_at",

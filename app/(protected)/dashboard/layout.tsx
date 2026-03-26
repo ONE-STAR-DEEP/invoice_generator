@@ -14,7 +14,6 @@ export default async function ProtectedLayout({
 }) {
     
     const user = await getCurrentUserSafe();
-    console.log(user)
     if(!user){
         redirect("/")
     }
@@ -26,13 +25,13 @@ export default async function ProtectedLayout({
             <SidebarProvider className="flex flex-1 flex-col">
 
                 {/* Top Bar */}
-                <div className="h-12 w-full bg-muted/50 px-4 flex items-center justify-between border-b border-muted/50">
+
+                <div className="h-12 fixed z-50 w-full bg-muted/70 backdrop-blur-md px-4 flex items-center justify-between border-b border-muted-foreground/20">
                     <SidebarTrigger className="p-2" />
                     <ThemeToggle />
                 </div>
-
                 {/* Content Area */}
-                <div className="flex flex-1 min-h-0">
+                <div className="flex flex-1 min-h-0 mt-12">
 
                     {/* Sidebar */}
                     <AppSidebar />
