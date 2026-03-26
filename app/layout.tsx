@@ -24,22 +24,6 @@ export const metadata: Metadata = {
 
   authors: [{ name: "Thaver Tech" }],
 
-  openGraph: {
-    title: "Invoice Generator | Thaver Tech",
-    description:
-      "Generate professional invoices in seconds. Fast, simple, and reliable.",
-    url: "https://accounts.thavertech.com",
-    siteName: "Thaver Tech",
-    images: [
-      {
-        url: "/logo.png", // put inside /public
-        width: 1200,
-        height: 630,
-      },
-    ],
-    type: "website",
-  },
-
   icons: {
     icon: "/logo.png",
   },
