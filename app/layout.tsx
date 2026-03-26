@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     title: "Invoice Generator | Thaver Tech",
     description:
       "Generate professional invoices in seconds. Fast, simple, and reliable.",
-    url: "https://your-domain.com",
+    url: "https://accounts.thavertech.com",
     siteName: "Thaver Tech",
     images: [
       {
@@ -38,14 +38,6 @@ export const metadata: Metadata = {
       },
     ],
     type: "website",
-  },
-
-  twitter: {
-    card: "summary_large_image",
-    title: "Invoice Generator | Thaver Tech",
-    description:
-      "Create and download invoices instantly with Thaver Tech.",
-    images: ["/logo.png"],
   },
 
   icons: {
