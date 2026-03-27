@@ -1,3 +1,5 @@
+"use client"
+
 import {
     Sidebar,
     SidebarContent,
@@ -11,12 +13,14 @@ import {
 } from "@/components/ui/sidebar"
 import { BarChart, CircleUser, CreditCard, Edit, FileText, Home, LogOut, LogOutIcon, UserPlus, Users } from "lucide-react"
 import Image from "next/image"
-import { ThemeToggle } from "./SystemTheme/theme-toggle"
 import Link from "next/link"
-import LogoutButton from "./logout-button"
 import { logout } from "@/lib/logout"
+import { useAuth } from "./Users/roleContext"
 
 export function AppSidebar() {
+
+    const user = useAuth()
+
     return (
         <Sidebar
             className="h-[calc(100vh-3rem)] mt-12 flex flex-col py-4 rounded-2xl"
@@ -100,7 +104,7 @@ export function AppSidebar() {
                             </Link>
                         </SidebarMenuItem>
 
-                        <SidebarMenuItem>
+                        {user?.role === "admin" && <SidebarMenuItem>
                             <Link href="/dashboard/users">
                                 <SidebarMenuButton>
                                     <UserPlus className="w-4 h-4" />
@@ -108,6 +112,7 @@ export function AppSidebar() {
                                 </SidebarMenuButton>
                             </Link>
                         </SidebarMenuItem>
+                        }
 
                         <SidebarMenuItem>
                             <SidebarMenuButton onClick={logout} className="text-red-500">
