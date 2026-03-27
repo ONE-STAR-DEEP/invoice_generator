@@ -35,6 +35,6 @@ export const columns: ColumnDef<ClientData>[] = [
   },
   {
     accessorKey: "assigned_person",
-    header: "Assigned",
+    header: "Assigned Person",
   },
 ]

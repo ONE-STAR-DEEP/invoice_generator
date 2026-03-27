@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input"
-import { fetchPendingInvoices, fetchServicesByExpiry, fetchStats } from "@/lib/actions/invoice"
+import { fetchPendingInvoices, fetchServices, fetchServicesByExpiry, fetchStats } from "@/lib/actions/invoice"
 import { DataTable } from "@/components/dataTable"
 import { columns } from "@/components/Dashboard/pendingTableColumn"
 import { endingServicesColumns } from "@/components/Dashboard/endindServicesTableColumn"
@@ -8,6 +8,8 @@ import { Calendar, CircleCheckBig, Clock, TrendingUp, Users } from "lucide-react
 import Pagination from "@/components/paginationComponent"
 import SearchComponent from "@/components/SearchComponent"
 import FinancialYearSelect from "@/components/Dashboard/FinancialYearSelector"
+import { fetchClients } from "@/lib/actions/clients"
+import { fetchCompanyData } from "@/lib/actions/users"
 
 const today = new Date().toLocaleDateString("en-IN", {
   weekday: "long",
@@ -42,6 +44,10 @@ export default async function Dashboard({
 
   const statData = await fetchStats(fy)
 
+  const clientData = await fetchClients();
+  const servicesData = await fetchServices();
+  const companyData = await fetchCompanyData();
+
   const invoiceData = await fetchPendingInvoices(
     invoicePage,
     invoiceLimit,
@@ -68,7 +74,13 @@ export default async function Dashboard({
             {today}
           </p>
         </div>
-        <AddInvoicePopup />
+
+        <AddInvoicePopup
+          ClientList={clientData?.data || []}
+          ServicesList={servicesData?.data || []}
+          companyData={companyData?.data || undefined}
+        />
+
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -106,7 +118,7 @@ export default async function Dashboard({
           </p>
         </div>
 
-        <FinancialYearSelect/>
+        <FinancialYearSelect />
 
       </div>
 
