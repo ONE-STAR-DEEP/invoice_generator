@@ -108,10 +108,24 @@ export type Invoice = {
   id: number;
   invoice_id: string;
   client_id: number;
-  sub_total: string;  
-  grand_total: string;    
-  status: "paid" | "pending"
-  created_at: string;     
+
+  client_name: string;
+  client_gst_no: string | null;
+  client_email: string | null;
+  client_phone: string | null;
+  client_address: string | null;
+  client_city: string | null;
+  client_state: string | null;
+  client_country: string | null;
+  client_pincode: string | null;
+
+  sub_total: string;
+  grand_total: string;
+
+  status: "paid" | "pending";
+  created_at: string;
+
+  total_items?: number;
 };
 
 export type InvoiceApiResponse = {
@@ -228,4 +242,11 @@ export type InvoiceServiceRow = {
   status: "pending" | "active" | "expired";
   name: string;
   hsn_code: string;
+};
+
+export type PageProps = {
+  searchParams: Promise<{
+    page?: string;
+    limit?: string;
+  }>;
 };

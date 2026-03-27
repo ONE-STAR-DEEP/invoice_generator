@@ -1,13 +1,28 @@
 import AddClientPopup from '@/components/Clients/addClientPopup'
 import { columns } from '@/components/Clients/tableColumns';
 import { DataTable } from '@/components/dataTable';
+import Pagination from '@/components/paginationComponent';
 import SearchComponent from '@/components/SearchComponent';
 import { fetchClients } from '@/lib/actions/clients'
 
+type PageProps = {
+  searchParams: Promise<{
+    page?: string;
+    limit?: string;
+    search?: string;
+  }>;
+};
 
-const Clients = async () => {
+const Clients = async ({ searchParams }: PageProps) => {
 
-  const data = await fetchClients();
+  const params = await searchParams;
+
+  const search = params?.search
+
+  const page = Number(params?.page) || 1;
+  const limit = Number(params?.limit) || 10;
+
+  const data = await fetchClients(page, limit, search);
 
   return (
     <div className="flex flex-col flex-1 space-y-6 min-h-0">
@@ -35,7 +50,10 @@ const Clients = async () => {
         </div>
         {/* Table / List goes here */}
         {data?.data &&
+        <>
           <DataTable data={data.data} columns={columns} />
+          <Pagination totalPages={data.pagination.totalPages}/>
+        </>
         }
       </section>
 

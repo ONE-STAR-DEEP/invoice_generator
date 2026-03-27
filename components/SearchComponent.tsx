@@ -14,7 +14,6 @@ const SearchComponent = (
     const [search, setSearch] = useState(searchParams.get("search") || "")
     const [debouncedValue, setDebouncedValue] = useState(search)
 
-    // debounce logic
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedValue(search)
@@ -23,7 +22,6 @@ const SearchComponent = (
         return () => clearTimeout(timer)
     }, [search])
 
-    // update url after debounce
     useEffect(() => {
 
         const params = new URLSearchParams(searchParams.toString())
@@ -34,7 +32,7 @@ const SearchComponent = (
             params.delete("search")
         }
 
-        router.push(`?${params.toString()}`)
+        router.push(`?${params.toString()}`, { scroll: false })
 
     }, [debouncedValue, router])
 
@@ -42,7 +40,7 @@ const SearchComponent = (
         <Input
             type="text"
             placeholder={placeholder}
-            className="bg-white border-primary"
+            className="bg-white border"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
         />

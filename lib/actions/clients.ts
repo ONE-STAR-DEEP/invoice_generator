@@ -71,17 +71,44 @@ export const insertClient = async (data: ClientInput) => {
   }
 };
 
-export const fetchClients = async () => {
+export const fetchClients = async (
+  page: number = 1,
+  limit: number = 10,
+  search?: string
+) => {
   const conn = await db.getConnection();
 
   try {
-    const [rows]: any = await conn.execute(`
-      SELECT * FROM clients
+    const offset = (page - 1) * limit;
+
+    const searchTerm = search ? `%${search}%` : `%`;
+
+    const [rows]: any = await conn.execute(
+      `
+  SELECT * FROM clients 
+  WHERE company_name LIKE ?
+  ORDER BY created_at DESC
+  LIMIT ${Number(limit)} OFFSET ${Number(offset)}
+  `,
+      [searchTerm]
+    );
+
+    const [countResult]: any = await conn.execute(`
+      SELECT COUNT(*) as total FROM clients
     `);
+
+    const total = countResult[0].total;
+    const totalPages = Math.ceil(total / limit);
 
     return {
       success: true,
       data: rows as ClientData[],
+      pagination: {
+        total,
+        totalPages,
+        currentPage: page,
+        limit,
+      },
     };
   } catch (error: any) {
     console.error("Error fetching clients:", error);

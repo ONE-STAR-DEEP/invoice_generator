@@ -122,8 +122,17 @@ export const insertInvoice = async (
 
     const [invoiceResult]: any = await conn.execute(
       `
-      INSERT INTO invoice (
+        INSERT INTO invoice (
         client_id,
+        client_name,
+        client_gst_no,
+        client_address,
+        client_phone,
+        client_email,
+        client_city,
+        client_state,
+        client_country,
+        client_pincode,
         sub_total,
         igst,
         cgst,
@@ -133,10 +142,23 @@ export const insertInvoice = async (
         podate,
         reference,
         invoice_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      )
+      SELECT 
+        c.id,
+        c.company_name,
+        c.gst_number,
+        c.address,
+        c.phone,
+        c.email,
+        c.city,
+        c.state,
+        c.country,
+        c.pincode,
+        ?, ?, ?, ?, ?, ?, ?, ?, ?
+      FROM clients c
+      WHERE c.id = ?
       `,
       [
-        data.clientId,
         subTotal,
         totalIGST,
         totalCGST,
@@ -146,6 +168,7 @@ export const insertInvoice = async (
         data.PODate,
         data.reference,
         data.invoiceId,
+        data.clientId, // IMPORTANT: goes at end
       ]
     );
 
@@ -191,45 +214,88 @@ export const insertInvoice = async (
   }
 };
 
-export const fetchAllInvoices = async () => {
+export const fetchAllInvoices = async (
+  page: number = 1,
+  limit: number = 10,
+  search?: string,
+  status?: string
+) => {
   const conn = await db.getConnection();
 
   try {
-    const [rows]: any = await conn.execute(`
-    SELECT 
+    const offset = (page - 1) * limit;
+
+    const searchTerm = search ? `%${search}%` : `%`;
+
+    const safeLimit = Math.min(50, Number(limit) || 10);
+    const safeOffset = Math.max(0, Number(offset) || 0);
+
+    let where = `
+      WHERE (
+      i.client_name LIKE ?
+      OR i.invoice_id LIKE ?
+      )
+    `;
+
+    const params: any[] = [searchTerm, searchTerm];
+
+    if (status) {
+      where += ` AND i.status = ?`;
+      params.push(status);
+    }
+
+    const [rows]: any = await conn.execute(
+      `
+  SELECT 
     i.id,
     i.invoice_id,
     i.client_id,
+    i.client_name,
+    i.client_gst_no,
+    i.client_email,
+    i.client_phone,
+    i.client_city,
+    i.client_state,
+    i.client_country,
+    i.client_pincode,
     i.sub_total,
     i.grand_total,
     i.created_at,
     i.status,
 
-    c.company_name,
-    c.gst_number,
-    c.email,
-    c.phone,
-    c.city,
-    c.state,
-
     COUNT(ii.id) AS total_items
 
-    FROM invoice i
+  FROM invoice i
 
-    LEFT JOIN clients c 
-      ON c.id = i.client_id
+  LEFT JOIN invoice_items ii 
+    ON ii.invoice_id = i.id
 
-    LEFT JOIN invoice_items ii 
-      ON ii.invoice_id = i.id
+  ${where}
 
-    GROUP BY i.id
+  GROUP BY i.id
 
-    ORDER BY i.created_at DESC
-  `);
+  ORDER BY i.created_at DESC
+  LIMIT ${safeLimit} OFFSET ${safeOffset}
+  `,
+      params
+    );
+
+    const [countResult]: any = await conn.execute(`
+      SELECT COUNT(*) as total FROM invoice
+    `);
+
+    const total = countResult[0].total;
+    const totalPages = Math.ceil(total / limit);
 
     return {
       success: true,
       data: rows,
+      pagination: {
+        total,
+        totalPages,
+        currentPage: page,
+        limit,
+      },
     };
   } catch (error) {
     console.error(error);
@@ -244,12 +310,28 @@ export const fetchAllInvoices = async () => {
 
 export const fetchPendingInvoices = async (
   page = 1,
-  limit = 10
+  limit = 10,
+  search?: string
 ) => {
   const conn = await db.getConnection();
 
   try {
     const offset = (page - 1) * limit;
+
+    const safeLimit = Math.min(50, Number(limit) || 10);
+    const safeOffset = Math.max(0, Number(offset) || 0);
+
+    const searchTerm = search ? `%${search}%` : `%`;
+
+    let where = `
+      WHERE i.status = 'pending'
+      AND (
+        i.client_name LIKE ?
+        OR i.invoice_id LIKE ?
+      )
+    `;
+
+    const params: any[] = [searchTerm, searchTerm];
 
     const [rows]: any = await conn.execute(
       `
@@ -257,46 +339,52 @@ export const fetchPendingInvoices = async (
         i.id,
         i.invoice_id,
         i.client_id,
+        i.client_name,
+        i.client_gst_no,
+        i.client_email,
+        i.client_phone,
+        i.client_city,
+        i.client_state,
         i.sub_total,
         i.grand_total,
         i.created_at,
         i.status,
 
-        c.company_name,
-        c.gst_number,
-        c.email,
-        c.phone,
-        c.city,
-        c.state,
-
         COUNT(ii.id) AS total_items
 
       FROM invoice i
-      LEFT JOIN clients c ON c.id = i.client_id
-      LEFT JOIN invoice_items ii ON ii.invoice_id = i.id
 
-      WHERE i.status = 'pending'
+      LEFT JOIN invoice_items ii 
+        ON ii.invoice_id = i.id
+
+      ${where}
 
       GROUP BY i.id
+
       ORDER BY i.created_at ASC
 
-      LIMIT ${limit} OFFSET ${offset}
-      `
+      LIMIT ${safeLimit} OFFSET ${safeOffset}
+      `,
+      params
     );
 
-    const [[{ total }]]: any = await conn.execute(`
-      SELECT COUNT(*) AS total
-      FROM invoice
-      WHERE status = 'pending'
-    `);
+    const [[{ total }]]: any = await conn.execute(
+      `
+      SELECT COUNT(DISTINCT i.id) AS total
+      FROM invoice i
+      LEFT JOIN invoice_items ii ON ii.invoice_id = i.id
+      ${where}
+      `,
+      params
+    );
 
     return {
       success: true,
       data: rows,
       page,
       limit,
-      total, 
-      totalPages: Math.ceil(total / limit),
+      total,
+      totalPages: Math.ceil(total / safeLimit),
     };
   } catch (error) {
     console.error(error);
@@ -381,60 +469,59 @@ export const fetchInvoiceById = async (invoiceId: number) => {
 
     const [invoiceRows]: any = await conn.execute(
       `
-      SELECT JSON_OBJECT(
-  'id', i.id,
-  'invoiceId', i.invoice_id,
-  'subTotal', i.sub_total,
-  'igst', i.igst,
-  'cgst', i.cgst,
-  'sgst', i.sgst,
-  'poNo', i.pono,
-  'poDate', i.podate,
-  'reference', i.reference,
-  'status', i.status,
-  'grandTotal', i.grand_total,
-  'createdAt', i.created_at,
+  SELECT JSON_OBJECT(
+    'id', i.id,
+    'invoiceId', i.invoice_id,
+    'subTotal', i.sub_total,
+    'igst', i.igst,
+    'cgst', i.cgst,
+    'sgst', i.sgst,
+    'poNo', i.pono,
+    'poDate', i.podate,
+    'reference', i.reference,
+    'status', i.status,
+    'grandTotal', i.grand_total,
+    'createdAt', i.created_at,
 
-  'client', JSON_OBJECT(
-    'id', c.id,
-    'companyName', c.company_name,
-    'gstNumber', c.gst_number,
-    'email', c.email,
-    'phone', c.phone,
-    'address', c.address,
-    'city', c.city,
-    'state', c.state,
-    'pincode', c.pincode
-  ),
+    'client', JSON_OBJECT(
+      'id', i.client_id,
+      'companyName', i.client_name,
+      'gstNumber', i.client_gst_no,
+      'email', i.client_email,
+      'phone', i.client_phone,
+      'address', i.client_address,
+      'city', i.client_city,
+      'state', i.client_state,
+      'country', i.client_country,
+      'pincode', i.client_pincode
+    ),
 
-  'items', (
-    SELECT JSON_ARRAYAGG(
-      JSON_OBJECT(
-        'id', ii.id,
-        'serviceId', s.id,
-        'service', s.name,
-        'hsn', s.hsn_code,
-        'cost', ii.cost,
-        'igst', ii.igst,
-        'cgst', ii.cgst,
-        'sgst', ii.sgst,
-        'expiry', ii.expiry
+    'items', (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'id', ii.id,
+          'serviceId', s.id,
+          'service', s.name,
+          'hsn', s.hsn_code,
+          'cost', ii.cost,
+          'igst', ii.igst,
+          'cgst', ii.cgst,
+          'sgst', ii.sgst,
+          'expiry', ii.expiry
+        )
       )
+      FROM invoice_items ii
+      LEFT JOIN services s ON s.id = ii.service_id
+      WHERE ii.invoice_id = i.id
     )
-    FROM invoice_items ii
-    LEFT JOIN services s ON s.id = ii.service_id
-    WHERE ii.invoice_id = i.id
-  )
 
-) AS invoice
+  ) AS invoice
 
-FROM invoice i
-LEFT JOIN clients c ON c.id = i.client_id
-WHERE i.id = ?;
-      `,
+  FROM invoice i
+  WHERE i.id = ?;
+  `,
       [invoiceId]
     );
-
 
     return {
       success: true,
@@ -476,15 +563,34 @@ export const updateStatus = async (invoiceId: number) => {
   }
 };
 
-export const fetchStats = async () => {
+export const fetchStats = async (fy?: string) => {
   try {
-    const [rows] = await db.query<StatsResult[]>(`
+    const getCurrentFY = () => {
+      const now = new Date();
+      const year =
+        now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+      return `${year}-${year + 1}`;
+    };
+
+    const selectedFY = fy || getCurrentFY();
+
+    const [startYear, endYear] = selectedFY.split("-").map(Number);
+
+    // FY range: Apr 1 → Mar 31
+    const startDate = `${startYear}-04-01`;
+    const endDate = `${endYear}-03-31`;
+
+    const [rows] = await db.query<StatsResult[]>(
+      `
       SELECT 
         SUM(grand_total) AS total_sales,
         SUM(CASE WHEN status = 'pending' THEN grand_total ELSE 0 END) AS pending_amount,
         SUM(CASE WHEN status = 'paid' THEN grand_total ELSE 0 END) AS paid_amount
       FROM invoice
-    `);
+      WHERE created_at >= ? AND created_at <= ?
+      `,
+      [startDate, endDate]
+    );
 
     return {
       totalSales: rows[0]?.total_sales ?? 0,

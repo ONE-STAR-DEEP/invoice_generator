@@ -24,9 +24,13 @@ export function AppSidebar() {
         >
 
             {/* Header */}
-            <SidebarHeader className="flex flex-row items-center gap-2 px-4">
+            <SidebarHeader className="flex flex-row items-end gap-2 px-4">
                 <Image src="/logo.png" height={30} width={30} alt="logo" />
-                <h2 className="text-xl font-bold">Invoice Generator</h2>
+
+                <p className="font-bold text-2xl leading-none">
+                    Thaver<span className="text-red-700">tech</span>
+                </p>
+
             </SidebarHeader>
 
             {/* Content */}

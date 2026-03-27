@@ -43,7 +43,7 @@ const Pagination = ({
   }
 
   return (
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-4">
+    <div className="flex flex-col items-center justify-between md:flex-row gap-4 mt-4">
       
       <div className="text-sm text-muted-foreground">
         Page {page} of {totalPages}

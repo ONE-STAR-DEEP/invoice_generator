@@ -13,11 +13,11 @@ export const columns: ColumnDef<Invoice>[] = [
         ),
     },
     {
-        accessorKey: "company_name",
-        header: "Company Name",
+        accessorKey: "client_name",
+        header: "Client Name",
     },
     {
-        accessorKey: "gst_number",
+        accessorKey: "client_gst_no",
         header: "GST No",
     },
     {
