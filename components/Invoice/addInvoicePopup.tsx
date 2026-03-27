@@ -21,6 +21,7 @@ import CreatableSelect from "react-select/creatable";
 import { ClientData, InvoiceData, InvoiceItem, SellerCompany, Service, ServiceOptions } from "@/lib/types/dataTypes";
 import Select from "react-select";
 import { insertInvoice } from "@/lib/actions/invoice";
+import { useAuth } from "../Users/roleContext";
 
 type ClientOption = {
     label: string
@@ -34,7 +35,7 @@ type Option = {
     value: InvoiceType
 }
 
-const selectStyles = {
+export const selectStyles = {
     menuPortal: (base: any) => ({
         ...base,
         zIndex: 9999,
@@ -80,6 +81,8 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
 
     const router = useRouter();
     const [mounted, setMounted] = useState(false)
+
+    const user = useAuth()
 
     useEffect(() => {
         setMounted(true)
@@ -200,9 +203,9 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
 
     return (
         <div>
-            <Button type="button" className="p-4" onClick={() => { setOpen(true) }}>
+            { user?.role !== "user" && <Button type="button" className="p-4" onClick={() => { setOpen(true) }}>
                 <Plus /> Generate Invoice
-            </Button>
+            </Button>}
 
             <Dialog open={open} onOpenChange={(val) => {
                 if (!val) resetForm()
@@ -228,8 +231,6 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                 Enter the details below to generate a new invoice in the system.
                             </DialogDescription>
                         </DialogHeader>
-
-                        {/* Scrollable Body */}
 
                         <div className="flex-1 overflow-y-auto px-6 py-4">
 

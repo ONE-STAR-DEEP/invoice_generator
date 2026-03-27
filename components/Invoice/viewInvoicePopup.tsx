@@ -18,6 +18,7 @@ import Image from "next/image";
 import { fetchBankAccountData, fetchCompanyData } from "@/lib/actions/users";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../Users/roleContext";
 
 const now = new Date();
 
@@ -281,6 +282,8 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
         }, 500);
     };
 
+    const user = useAuth();
+
     const handleStatusChange = async () => {
         try {
             const res = await updateStatus(id)
@@ -412,7 +415,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                         <div className="flex items-center justify-start gap-2">
                             <DialogTitle className="text-xl">Invoice Details</DialogTitle>
                             <Printer onClick={handlePrint} size={28} className="text-primary hover:bg-secondary p-1 rounded-sm" />
-                            {invoiceData?.status === "pending" && <Button onClick={handleStatusChange}>Mark as Paid</Button>}
+                            {( user?.role !== "user" && invoiceData?.status === "pending") && <Button onClick={handleStatusChange}>Mark as Paid</Button>}
                         </div>
                         <DialogDescription>
                             Review complete invoice information including items, tax breakdown, and billing details.
@@ -452,17 +455,6 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                     <h1 className="text-3xl font-semibold">Tax Invoice</h1>
                                 </div>
 
-                                {/* <div className="flex flex-col items-center mt-2">
-                                    <h1 className="text-xl">{companyData?.name.toUpperCase()}</h1>
-                                    <p className="text-sm font-light">{companyData?.address_line1}, {companyData?.city}-{companyData?.pincode}</p>
-                                    <a
-                                        href={`mailto:${companyData?.email}`}
-                                        className="text-sm font-ligh"
-                                    >
-                                        Email: {companyData?.email}
-                                    </a>
-                                    <p className="text-sm font-light">Website: <Link href="https://www.thavertech.com/">www.thavertech.com</Link></p>
-                                </div> */}
                             </header>
 
                             <section className="grid grid-cols-2 border justify-between mb-8 print:no-break">

@@ -34,7 +34,7 @@ export async function decrypt(encrypted: string, ivHex: string) {
 
 export const createUser = async (data: User) => {
     const conn = await db.getConnection();
-        
+
     try {
         if (!data.email || !data.password || !data.name || !data.mobile) {
             return {
@@ -46,7 +46,11 @@ export const createUser = async (data: User) => {
 
         const userId = session?.id;
 
-        if (!userId || session.role !== "admin" || session.iss !=="thaverTechInvoiceGenerator") {
+        if (
+            !userId ||
+            session.iss !== "thaverTechInvoiceGenerator" ||
+            session.role !== "admin"
+        ) {
             return { success: false, message: "Unauthorized" };
         }
 

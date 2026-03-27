@@ -250,3 +250,32 @@ export type PageProps = {
     limit?: string;
   }>;
 };
+
+export type ClientStateReport = {
+  client_id: number;
+  client_name: string;
+
+  total_amount: number;
+
+  paid_amount: number;
+  pending_amount: number;
+
+  total_invoices: number;
+  paid_invoices: number;
+  pending_invoices: number;
+
+  total_items: number;
+};
+
+export type ClientLocationReport = {
+  client_id: number;
+  client_name: string;
+
+  client_city: string;
+  client_state: string;
+
+  total_amount: number;
+
+  total_invoices: number;
+  total_items: number;
+};

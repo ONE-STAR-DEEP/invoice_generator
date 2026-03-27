@@ -3,7 +3,7 @@
 import { GST } from "../config/gst";
 import db from "../dbPool";
 import { getCurrentUserSafe } from "../sessionCheck";
-import { InvoiceApiResponse, InvoiceData, InvoiceItem, InvoiceServiceRow, Service } from "../types/dataTypes";
+import { ClientLocationReport, InvoiceApiResponse, InvoiceData, InvoiceItem, InvoiceServiceRow, Service } from "../types/dataTypes";
 import { RowDataPacket } from "mysql2";
 
 interface StatsResult extends RowDataPacket {
@@ -12,11 +12,23 @@ interface StatsResult extends RowDataPacket {
   paid_amount: number | null;
 }
 
+export interface ClientReport extends RowDataPacket {
+  client_id: number;
+  client_name: string;
+  total_amount: number;
+  paid_amount: number;
+  pending_amount: number;
+  total_invoices: number;
+  paid_invoices: number;
+  pending_invoices: number;
+}
+
 type GroupedInvoices = {
   paid: any[];
   pending: any[];
 };
 
+const allowedRoles = ["admin", "accounts"];
 
 const round = (val: number) => Math.round(val * 100) / 100;
 
@@ -52,6 +64,18 @@ export const insertInvoice = async (
   const conn = await db.getConnection();
 
   try {
+
+    const session = await getCurrentUserSafe();
+    const userId = session?.id;
+
+    if (!userId || session.iss !== "thaverTechInvoiceGenerator") {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!allowedRoles.includes(session.role)) {
+      return { success: false, message: "Unauthorized" };
+    }
+
     if (!items.length) {
       throw new Error("No invoice items provided");
     }
@@ -548,6 +572,10 @@ export const updateStatus = async (invoiceId: number) => {
       return { success: false, message: "Unauthorized" };
     }
 
+    if (!allowedRoles.includes(session.role)) {
+      return { success: false, message: "Unauthorized" };
+    }
+
     const [result] = await db.query(
       "UPDATE invoice SET status = ? WHERE id = ?",
       ["paid", invoiceId]
@@ -578,7 +606,7 @@ export const fetchStats = async (fy?: string) => {
 
     // FY range: Apr 1 → Mar 31
     const startDate = `${startYear}-04-01`;
-    const endDate = `${endYear}-03-31`;
+    const endDate = `${endYear}-04-01`;
 
     const [rows] = await db.query<StatsResult[]>(
       `
@@ -587,7 +615,7 @@ export const fetchStats = async (fy?: string) => {
         SUM(CASE WHEN status = 'pending' THEN grand_total ELSE 0 END) AS pending_amount,
         SUM(CASE WHEN status = 'paid' THEN grand_total ELSE 0 END) AS paid_amount
       FROM invoice
-      WHERE created_at >= ? AND created_at <= ?
+      WHERE created_at >= ? AND created_at < ?
       `,
       [startDate, endDate]
     );
@@ -604,5 +632,160 @@ export const fetchStats = async (fy?: string) => {
       pendingAmount: 0,
       paidAmount: 0,
     };
+  }
+};
+
+export const fetchClientReport = async (
+  page: number = 1,
+  pageSize: number = 10
+) => {
+  const conn = await db.getConnection();
+
+  const offset = (page - 1) * pageSize;
+
+  try {
+    // Paginated data
+    const [rows] = await conn.query<ClientReport[]>(
+      `
+      SELECT 
+        client_id,
+        client_name,
+
+        SUM(grand_total) AS total_amount,
+
+        SUM(CASE WHEN status = 'paid' THEN grand_total ELSE 0 END) AS paid_amount,
+        SUM(CASE WHEN status = 'pending' THEN grand_total ELSE 0 END) AS pending_amount,
+
+        COUNT(*) AS total_invoices,
+        SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS paid_invoices,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_invoices
+
+      FROM invoice
+
+      GROUP BY client_id, client_name
+
+      ORDER BY total_amount DESC
+      LIMIT ? OFFSET ?
+      `,
+      [pageSize, offset]
+    );
+
+    // Total unique clients
+    const [countResult]: any = await conn.query(`
+      SELECT COUNT(DISTINCT client_id) AS total
+      FROM invoice
+    `);
+
+    const total = countResult[0].total;
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      success: true,
+      data: rows,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages, // ✅ explicitly returned
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching client report:", error);
+    return {
+      success: false,
+      data: [],
+      pagination: null,
+    };
+  } finally {
+    conn.release();
+  }
+};
+
+
+export const fetchClientReportByState = async (
+  state?: string,
+  page: number = 1,
+  pageSize: number = 10
+) => {
+  const conn = await db.getConnection();
+
+  const offset = (page - 1) * pageSize;
+
+  try {
+    let query = `
+      SELECT 
+        i.client_id,
+        i.client_name,
+        i.client_city,
+        i.client_state,
+
+        SUM(i.grand_total) AS total_amount,
+        COUNT(DISTINCT i.id) AS total_invoices,
+        COUNT(ii.id) AS total_items
+
+      FROM invoice i
+
+      LEFT JOIN invoice_items ii 
+        ON ii.invoice_id = i.id
+    `;
+
+    const params: any[] = [];
+
+    if (state) {
+      query += ` WHERE i.client_state = ? `;
+      params.push(state);
+    }
+
+    query += `
+      GROUP BY 
+        i.client_id,
+        i.client_name,
+        i.client_city,
+        i.client_state
+
+      ORDER BY total_amount DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    params.push(pageSize, offset);
+
+    const [rows] = await conn.query(query, params);
+
+    let countQuery = `
+      SELECT COUNT(DISTINCT i.client_id) AS total
+      FROM invoice i
+    `;
+
+    const countParams: any[] = [];
+
+    if (state) {
+      countQuery += ` WHERE i.client_state = ? `;
+      countParams.push(state);
+    }
+
+    const [countResult]: any = await conn.query(countQuery, countParams);
+
+    const total = countResult[0].total;
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      success: true,
+      data: rows as ClientLocationReport[],
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching client report by state:", error);
+    return {
+      success: false,
+      data: [],
+      pagination: null,
+    };
+  } finally {
+    conn.release();
   }
 };
