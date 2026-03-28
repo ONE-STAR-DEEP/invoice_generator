@@ -15,10 +15,16 @@ import { FullClientDetails } from '@/lib/types/dataTypes';
 import { DataTable } from '../dataTable';
 import { columns } from './InvoiceTable';
 
+
+export const triggerClientRefresh = () => {
+    window.dispatchEvent(new Event("client-refresh"));
+};
+
 const ViewInvoices = ({ id }: { id: number }) => {
 
-    const [open, setOpen] = useState(false)
-    const [data, setData] = useState<FullClientDetails | null>(null)
+    const [open, setOpen] = useState(false);
+    const [refreshToken, setRefreshToken] = useState(0);
+    const [data, setData] = useState<FullClientDetails | null>(null);
 
     useEffect(() => {
         const loadData = async () => {
@@ -33,7 +39,19 @@ const ViewInvoices = ({ id }: { id: number }) => {
         }
         loadData();
 
-    }, [id, open]);
+    }, [id, open, refreshToken]);
+
+    useEffect(() => {
+        const handleRefresh = () => {
+            setRefreshToken((prev) => prev + 1);
+        };
+
+        window.addEventListener("client-refresh", handleRefresh);
+
+        return () => {
+            window.removeEventListener("client-refresh", handleRefresh);
+        };
+    }, []);
 
     return (
         <div>
@@ -110,7 +128,7 @@ const ViewInvoices = ({ id }: { id: number }) => {
                                         <p className="text-muted-foreground">Email</p>
                                         <a
                                             href={`mailto:${data?.client?.email}`}
-                                            className="font-medium truncate max-w-[220px] block hover:underline"
+                                            className="font-medium truncate max-w-55 block hover:underline"
                                             title={data?.client?.email}
                                         >
                                             {data?.client?.email || "-"}
@@ -175,10 +193,10 @@ const ViewInvoices = ({ id }: { id: number }) => {
                             </div>
 
                         </section>
-                        
+
                         <section className='p-4 space-y-2'>
                             <h2 className='text-lg font-bold'>Invoice Record</h2>
-                            <DataTable data={data?.invoices ?? []} columns={columns}/>
+                            <DataTable data={data?.invoices ?? []} columns={columns} />
                         </section>
 
                     </main>

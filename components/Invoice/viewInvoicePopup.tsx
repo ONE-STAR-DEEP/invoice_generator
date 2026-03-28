@@ -19,6 +19,7 @@ import { fetchBankAccountData, fetchCompanyData } from "@/lib/actions/users";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../Users/roleContext";
+import { triggerClientRefresh } from "../Clients/ViewInvoices";
 
 export const formatIST = (date?: string | Date) => {
     if (!date) return "";
@@ -277,6 +278,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
             const res = await updateStatus(id)
             if (res.success) {
                 router.refresh()
+                triggerClientRefresh(); 
                 setOpen(false)
             }
         } catch (error) {
