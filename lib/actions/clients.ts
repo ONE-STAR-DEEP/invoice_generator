@@ -1,7 +1,7 @@
 "use server"
 
 import db from "../dbPool";
-import { ClientData, ClientInput } from "../types/dataTypes";
+import { ClientData, ClientInput, FullClientDetails } from "../types/dataTypes";
 
 export const insertClient = async (data: ClientInput) => {
   try {
@@ -117,6 +117,72 @@ export const fetchClients = async (
       success: false,
       message: error.message || "Failed to fetch clients",
     };
+  } finally {
+    conn.release();
+  }
+};
+
+export const fetchFullClientDetails = async (clientId: number) => {
+  const conn = await db.getConnection();
+
+  try {
+    const [clientRows]: any = await conn.execute(
+      `SELECT * FROM clients WHERE id = ?`,
+      [clientId]
+    );
+
+    const client = clientRows[0] || null;
+
+    const [invoiceRows]: any = await conn.execute(
+      `SELECT 
+        id,
+        invoice_id,
+        sub_total,
+        grand_total,
+        status,
+        reference,
+        created_at
+      FROM invoice
+      WHERE client_id = ?
+      ORDER BY id DESC`,
+      [clientId]
+    );
+
+    const [summaryRows]: any = await conn.execute(
+      `SELECT 
+    COUNT(*) AS total_invoices,
+    COALESCE(SUM(grand_total), 0) AS total_amount,
+
+    COALESCE(SUM(CASE 
+      WHEN status = 'paid' THEN grand_total 
+      ELSE 0 
+    END), 0) AS paid_amount,
+
+    COALESCE(SUM(CASE 
+      WHEN status = 'pending' THEN grand_total 
+      ELSE 0 
+    END), 0) AS pending_amount
+
+  FROM invoice
+  WHERE client_id = ?`,
+      [clientId]
+    );
+
+    const summary = summaryRows[0];
+
+    return {
+      success: true,
+      data: {
+        client,
+        invoices: invoiceRows,
+        summary,
+      } as FullClientDetails,
+      message: "Failed to fetch"
+    };
+
+  } catch (error) {
+    console.error("Error fetching full client details:", error);
+    throw error;
   } finally {
     conn.release();
   }

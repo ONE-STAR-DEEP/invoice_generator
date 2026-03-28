@@ -20,18 +20,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../Users/roleContext";
 
-const now = new Date();
-
-const formatted = now.toLocaleString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-});
-
 export const formatIST = (date?: string | Date) => {
     if (!date) return "";
 

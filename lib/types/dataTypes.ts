@@ -279,3 +279,43 @@ export type ClientLocationReport = {
   total_invoices: number;
   total_items: number;
 };
+
+export type ClientFull = {
+  id: number;
+  company_name: string;
+  gst_number:string;
+  pan: string
+  assigned_person: string
+  designation: string
+  notes: string
+
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country: string;
+  pincode: string;
+  created_at?: string;
+};
+
+export type ClientInvoice = {
+  id: number;
+  invoice_id: string;
+  sub_total: number;
+  grand_total: number;
+  reference?: string;
+};
+
+export type ClientSummary = {
+  total_invoices: number;
+  total_amount: number;
+  paid_amount: number;
+  pending_amount: number;
+};
+
+export type FullClientDetails = {
+  client: ClientFull | null;
+  invoices: Invoice[];
+  summary: ClientSummary;
+};

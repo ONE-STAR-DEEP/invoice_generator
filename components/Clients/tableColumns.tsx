@@ -2,6 +2,7 @@
 
 import { ClientData } from "@/lib/types/dataTypes"
 import { ColumnDef } from "@tanstack/react-table"
+import ViewInvoices from "./ViewInvoices";
 
 export const columns: ColumnDef<ClientData>[] = [
   {
@@ -37,4 +38,15 @@ export const columns: ColumnDef<ClientData>[] = [
     accessorKey: "assigned_person",
     header: "Assigned Person",
   },
+  {
+  accessorKey: "id",
+  header: "Action",
+  cell: ({ row }) => {
+    const id = row.getValue("id");
+
+    return (
+      <ViewInvoices id={Number(id)}/>
+    );
+  },
+}
 ]

@@ -1,7 +1,11 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
+const Select = dynamic(() => import("react-select"), {
+  ssr: false,
+});
 import { useRouter, useSearchParams } from "next/navigation";
-import Select from "react-select";
 import { State } from "country-state-city";
 import { selectClassNames, selectStyles } from "../Invoice/addInvoicePopup";
 
