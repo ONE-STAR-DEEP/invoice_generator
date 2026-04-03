@@ -189,8 +189,8 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
   }
 
   body {
-    margin: 0;
-    padding: 0;
+    margin: 1px;
+    padding: 1px;
     font-family: 'Nunito Sans', sans-serif;
   }
 
@@ -243,6 +243,11 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
   padding: 2px 4px;
   font-size: 11px !important;
   border-right: 0.5px solid #000000;
+}
+
+#invoice-print th:last-child,
+#invoice-print td:last-child {
+  border-right: 0;
 }
 
 
