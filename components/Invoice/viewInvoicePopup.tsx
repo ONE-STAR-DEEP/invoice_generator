@@ -64,7 +64,8 @@ const formatCurrency = (num?: number) =>
     num?.toLocaleString("en-IN", {
         style: "currency",
         currency: "INR",
-        maximumFractionDigits: 0,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
     });
 
 export const numberToWords = (num: number): string => {
@@ -146,6 +147,9 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
         fetchData();
     }, [open, id])
 
+    const minRows = 20;
+    const emptyRows = invoiceData ? Math.max(0, minRows - invoiceData.items.length) : 0;
+
     const handlePrint = () => {
         const content = document.getElementById("invoice-print")?.innerHTML;
 
@@ -192,7 +196,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
   #companyName {
   font-weight: 700;
-  font-size: 20px;   /* slightly reduced for print */
+  font-size: 26px;   /* slightly reduced for print */
   line-height: 1;
 }
 
@@ -224,20 +228,23 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
   /* table */
   #invoice-print table {
     width: 100%;
-    border-collapse: collapse;
+    border-top: 0.5px solid #000000;
+    border-bottom: 0.5px solid #000000;
     font-size: 11px !important;
+  }
+
+  #invoice-print th{
+  padding: 4px;
+  border-bottom: 0.5px solid #000000;  
   }
 
   #invoice-print th,
   #invoice-print td {
-    padding: 6px;
-    font-size: 11px !important;
-    border: 1px solid #cbd5e1;
-  }
+  padding: 2px 4px;
+  font-size: 11px !important;
+  border-right: 0.5px solid #000000;
+}
 
-  thead {
-    display: table-header-group;
-  }
 
   tr {
     page-break-inside: avoid;
@@ -278,7 +285,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
             const res = await updateStatus(id)
             if (res.success) {
                 router.refresh()
-                triggerClientRefresh(); 
+                triggerClientRefresh();
                 setOpen(false)
             }
         } catch (error) {
@@ -405,7 +412,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                         <div className="flex items-center justify-start gap-2">
                             <DialogTitle className="text-xl">Invoice Details</DialogTitle>
                             <Printer onClick={handlePrint} size={28} className="text-primary hover:bg-secondary p-1 rounded-sm" />
-                            {( user?.role !== "user" && invoiceData?.status === "pending") && <Button onClick={handleStatusChange}>Mark as Paid</Button>}
+                            {(user?.role !== "user" && invoiceData?.status === "pending") && <Button onClick={handleStatusChange}>Mark as Paid</Button>}
                         </div>
                         <DialogDescription>
                             Review complete invoice information including items, tax breakdown, and billing details.
@@ -414,42 +421,32 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                     <div id="invoice-print" className="p-10 print:p-0">
                         {/* Scrollable Body */}
-                        <div className="flex-1">
+                        <div className="flex-1 border border-black">
 
                             {/* HEADER */}
-                            <header className="flex flex-col items-center pb-4 mb-4 print:no-break">
-                                <div className="flex w-full items-center justify-between">
-                                    <div className="flex items-center font-medium">
-                                        <div className="flex items-center justify-center rounded-md text-primary">
-                                            <Image
-                                                src="/logo.png"
-                                                height={60}
-                                                width={60}
-                                                alt="logo"
-                                            />
-                                        </div>
+                            <header className="grid grid-cols-[20%_60%_20%] my-2 print:no-break">
 
-                                        <div className="flex flex-col space-y-0">
-                                            <p id="companyName" className="font-bold text-2xl leading-none">
-                                                Thaver<span className="text-red-700">tech</span>
-                                            </p>
-                                            <p id="tagline" className="italic font-semibold text-xs tracking-tight leading-none -ml-2">
-                                                Your Thought Our Invention
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <p className="text-sm font-light">Website: <Link href="https://www.thavertech.com/">www.thavertech.com</Link></p>
+                                <div className="my-auto">
+                                    <Image
+                                        src="/logo.png"
+                                        height={60}
+                                        width={60}
+                                        alt="logo"
+                                    />
                                 </div>
 
-                                <div className="mt-2">
-                                    <h1 className="text-3xl font-semibold">Tax Invoice</h1>
+                                <div className="mt-2 flex flex-col items-center text-center">
+                                    <p id="companyName" className="font-bold text-4xl leading-none">
+                                        Thaver Tech Private Limited
+                                    </p>
+                                    <h1 className="text-3xl mt-2 font-semibold">Tax Invoice</h1>
                                 </div>
 
                             </header>
 
-                            <section className="grid grid-cols-2 border justify-between mb-8 print:no-break">
+                            <section className="grid grid-cols-2 border-t border-b border-black justify-between mb-6 print:no-break">
 
-                                <div className="p-2 border-b border-r grid grid-cols-[120px_1fr] gap-y-1 text-sm">
+                                <div className="p-2 border-b border-r border-black grid grid-cols-[120px_1fr] gap-y-1 text-sm">
                                     <span className="font-medium">Name:</span>
                                     <span className="font-bold">{companyData?.name}</span>
 
@@ -475,31 +472,31 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                     <span>{companyData?.gst}</span>
                                 </div>
 
-                                <div className="border-b p-2 grid grid-cols-[110px_1fr] gap-y-1 text-sm">
-                                    <span className="font-medium">Invoice No:</span>
-                                    <span className="font-bold">{invoiceData?.invoiceId}</span>
+                                <div className="b-border grid grid-cols-[110px_1fr] gap-y-1 text-sm">
+                                    <p className="font-medium b-border pt-1 pl-2">Invoice No:</p>
+                                    <p className="font-bold b-border pt-1 pl-2">{invoiceData?.invoiceId}</p>
 
-                                    <span className="font-medium">Invoice Date:</span>
-                                    <span>
+                                    <span className="font-medium b-border pl-2">Invoice Date:</span>
+                                    <span className=" b-border pl-2">
                                         {formatIST(invoiceData?.createdAt)}
                                     </span>
 
-                                    <span className="font-medium">GST No:</span>
-                                    <span>{invoiceData?.client.gstNumber}</span>
+                                    <span className="font-medium b-border pl-2">GST No:</span>
+                                    <span className="b-border pl-2">{invoiceData?.client.gstNumber}</span>
 
-                                    <span className="font-medium">PO No:</span>
-                                    <span>
+                                    <span className="font-medium b-border pl-2">PO No:</span>
+                                    <span className="b-border pl-2">
                                         {invoiceData?.poNo}
                                     </span>
 
-                                    <span className="font-medium">PO Date:</span>
-                                    <span>{formatDateOnly(invoiceData?.poDate)}</span>
+                                    <span className="font-medium b-border pl-2">PO Date:</span>
+                                    <span className="b-border pl-2">{formatDateOnly(invoiceData?.poDate)}</span>
 
-                                    <span className="font-medium">Reference:</span>
-                                    <span>{invoiceData?.reference}</span>
+                                    <span className="font-medium pl-2">Reference:</span>
+                                    <span className="pl-2">{invoiceData?.reference}</span>
                                 </div>
 
-                                <div className="border-r p-2 grid grid-cols-[120px_1fr] gap-y-1 text-sm">
+                                <div className="border-r border-black p-2 grid grid-cols-[120px_1fr] gap-y-1 text-sm">
                                     <span className="font-medium">Account Name:</span>
                                     <span className="">{accountData?.account_name}</span>
 
@@ -535,34 +532,44 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                             {/* TABLE */}
                             <section className="mt-4">
-                                <table className="w-full border border-collapse">
-                                    <thead className="bg-secondary">
+                                <table className="w-full border-t border-b border-collapse">
+                                    <thead className="bg-secondary print:bg-none">
                                         <tr>
-                                            <th className="border p-2">S No</th>
-                                            <th className="border p-2 text-left">Service</th>
-                                            <th className="border p-2">HSN Code</th>
+                                            <th className="border-r p-2 w-16">S No</th>
+                                            <th className="border-r p-2 text-left">Service</th>
+                                            <th className="border-r p-2">HSN Code</th>
 
-                                            <th className="border p-2">Cost</th>
+                                            <th className="border-r p-2">Cost</th>
                                         </tr>
                                     </thead>
 
                                     <tbody>
                                         {invoiceData?.items.map((item, i) => (
                                             <tr key={i} className="text-center print:break-inside-avoid">
-                                                <td className="border p-2">{i + 1}</td>
-                                                <td className="border p-2 text-left">{item.service}</td>
-                                                <td className="border p-2">{item.hsn}</td>
-                                                <td className="border p-2 text-right">{formatCurrency(item.cost)}</td>
+                                                <td className="border-r p-1">{i + 1}</td>
+                                                <td className="border-r px-3 text-left">{item.service}</td>
+                                                <td className="border-r p-1">{item.hsn}</td>
+                                                <td className="border-r px-3 text-right">{formatCurrency(item.cost)}</td>
+                                            </tr>
+                                        ))}
+
+                                        {Array.from({ length: Math.max(0, emptyRows) }).map((_, i) => (
+                                            <tr key={`empty-${i}`} className="text-center">
+                                                <td className="border-r p-1">&nbsp;</td>
+                                                <td className="border-r p-1"></td>
+                                                <td className="border-r p-1"></td>
+                                                <td className="border-r p-1"></td>
                                             </tr>
                                         ))}
                                     </tbody>
+
                                 </table>
                             </section>
 
                             {/* TOTALS */}
-                            <section className="border mt-6 print:no-break">
-                                <div className="border-b flex justify-end">
-                                    <div className="border-l p-2 w-1/3">
+                            <section className="border-t border-black mt-6 print:no-break">
+                                <div className="border-b border-black flex justify-between">
+                                    <div className="border-r border-black p-2 w-1/3">
                                         <div className="flex justify-between">
                                             <span>Subtotal</span>
                                             <span>{formatCurrency(invoiceData?.subTotal)}</span>
@@ -590,8 +597,15 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                             <span>{formatCurrency(invoiceData?.grandTotal)}</span>
                                         </div>
                                     </div>
+
+                                    <div className=" px-4 py-1 flex flex-col justify-between items-end">
+                                        <p className="uppercase">For Thaver tech private limited</p>
+                                        <p className="">Authorised Signature</p>
+
+                                    </div>
+
                                 </div>
-                                <div className="w-full flex flex-col items-end p-2">
+                                <div className="w-full flex flex-col items-start p-2">
                                     <p>Grand Total Payable(in words)</p>
                                     <p className="font-bold">INR(₹): {numberToWords(invoiceData?.grandTotal || 0)}</p>
                                 </div>
@@ -599,6 +613,12 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                             </section>
 
                         </div>
+
+                        <div className="px-2 flex justify-between">
+                            <p>This is a Computer Generated Invoice</p>
+                            <p>SUBJECT TO HARYANA JURISDICTION</p>
+                        </div>
+
                     </div>
 
                     {/* Clean Footer */}

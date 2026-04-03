@@ -129,6 +129,10 @@
   html {
     @apply font-sans;
   }
+
+  .b-border{
+    @apply border-b border-black;
+  }
 }
 
 /* Webkit browsers */
