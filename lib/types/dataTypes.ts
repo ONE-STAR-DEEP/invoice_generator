@@ -193,6 +193,7 @@ export type BankAccount = {
   account_number: string;
 
   ifsc_code: string;
+  swift_code: string;
   bank_name: string;
   branch: string;
 

@@ -44,19 +44,32 @@ export const formatIST = (date?: string | Date) => {
 };
 
 export const formatDateOnly = (date?: string | Date) => {
-    if (!date) return "-";
+  if (!date) return "-";
 
-    const parsed =
-        typeof date === "string"
-            ? new Date(date.replace(" ", "T"))
-            : date;
+  const parsed =
+    typeof date === "string"
+      ? new Date(date.replace(" ", "T"))
+      : date;
 
-    return parsed.toLocaleDateString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    });
+  const day = parsed.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    timeZone: "Asia/Kolkata",
+  });
+
+  let month = parsed.toLocaleDateString("en-GB", {
+    month: "short",
+    timeZone: "Asia/Kolkata",
+  });
+
+  // Ensure proper case (First letter capital, rest lowercase)
+  month = month.charAt(0).toUpperCase() + month.slice(1).toLowerCase();
+
+  const year = parsed.toLocaleDateString("en-GB", {
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  });
+
+  return `${day}-${month}-${year}`;
 };
 
 const formatCurrency = (num?: number) =>
@@ -448,42 +461,45 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                             </header>
 
-                            <section className="grid grid-cols-2 border-t border-b border-primary justify-between mb-6 print:no-break">
+                            <section className="grid grid-cols-2 border-t border-primary justify-between print:no-break">
 
                                 <div className="p-2 border-b border-r border-primary grid grid-cols-1 text-sm">
                                     <p className="font-bold">{companyData?.name}</p>
-
                                     <p>{companyData?.address_line1}, <span className="text-nowrap">{companyData?.city}, {companyData?.state}-{companyData?.pincode}</span></p>
                                     <p>GSTIN: {companyData?.gst}</p>
                                 </div>
 
-                                <div className="py-1 b-border grid grid-cols-[100px_1fr] text-sm">
-                                    <p className="font-medium b-border pl-2">Invoice No</p>
-                                    <p className="font-bold b-border">: {invoiceData?.invoiceId} | Invoice Date: {formatDateOnly(invoiceData?.createdAt)}</p>
+                                <div className="b-border grid grid-cols-1 text-sm">
 
-                                    <p className="font-medium b-border pl-2">PO No:</p>
-                                    <p className="b-border">: {invoiceData?.poNo} | PO Date: {formatDateOnly(invoiceData?.poDate)}</p>
+                                    <div className="grid grid-cols-2 b-border h-full m-0">
+                                        <span className="py-1 font-medium border-r border-primary pl-2 h-full">Invoice No <span className="font-bold">: {invoiceData?.invoiceId}</span></span>
+                                        <span className="py-1 pl-2 h-full">Dated: {formatDateOnly(invoiceData?.createdAt)}</span>
+                                    </div>
 
-                                    <p className="font-medium pl-2">Reference</p>
-                                    <p className="">: {invoiceData?.reference}</p>
+                                    <div className="grid grid-cols-2 b-border">
+                                        <span className="py-1 font-medium border-r border-primary pl-2 h-full">PO No<span>: {invoiceData?.poNo}</span></span>
+                                        <span className="py-1 pl-2 h-full">PO Date: {formatDateOnly(invoiceData?.poDate)}</span>
+                                    </div>
+
+                                    <p className="font-medium pl-2">Reference: {invoiceData?.reference}</p>
 
                                 </div>
 
-                                <div className="border-r border-primary p-2 grid grid-cols-[100px_1fr] text-sm">
-                                    <p className="font-medium">Account Name</p>
-                                    <p className="">: {accountData?.account_name}</p>
+                                <div className="grid grid-cols-1 border-r border-primary">
+                                    <div className="grid grid-cols-[60%_40%] b-border h-full m-0">
+                                        <span className="py-1 font-medium border-r border-primary pl-2 h-full">Account No <span className="font-bold">: {accountData?.account_number}</span></span>
+                                        <span className="py-1 pl-2 h-full">IFSC: {accountData?.ifsc_code}</span>
+                                    </div>
+                                    <div className="px-2 grid grid-cols-[100px_1fr] text-sm">
+                                        <p className="font-medium">Swift Code</p>
+                                        <p>: {accountData?.swift_code}</p>
 
-                                    <p className="font-medium">Account No</p>
-                                    <p>: {accountData?.account_number}</p>
+                                        <p className="font-medium">Bank Name</p>
+                                        <p>: {accountData?.bank_name}</p>
 
-                                    <p className="font-medium">IFSC</p>
-                                    <p>: {accountData?.ifsc_code}</p>
-
-                                    <p className="font-medium">Bank Name</p>
-                                    <p>: {accountData?.bank_name}</p>
-
-                                    <p className="font-medium">Branch</p>
-                                    <p>: {accountData?.branch}</p>
+                                        <p className="font-medium">Branch</p>
+                                        <p>: {accountData?.branch}</p>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 text-sm p-2">
@@ -493,22 +509,21 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                                     <p className="font-medium">GST No: {invoiceData?.client.gstNumber}</p>
 
-                                    <p className="">{invoiceData?.client.phone}</p>
-                                    <p className="">State Name:{invoiceData?.client.state}</p>
+                                    <p className="">State Name: {invoiceData?.client.state}</p>
 
                                     {/* <p className="py-1">: {invoiceData?.client.email}</p> */}
                                 </div>
                             </section>
 
                             {/* TABLE */}
-                            <section className="mt-4">
+                            <section className="">
                                 <table className="w-full border-t border-b border-primary border-collapse ">
                                     <thead className="bg-secondary border-b border-primary print:bg-none">
                                         <tr>
                                             <th className="border-r border-primary p-2 w-16">S No</th>
                                             <th className="border-r border-primary p-2 text-left">Description of Services</th>
-                                            <th className="border-r border-primary p-2">HSN/SAC Code</th>
-                                            <th className="p-2">Amount</th>
+                                            <th className="border-r border-primary p-2  w-30">HSN/SAC Code</th>
+                                            <th className="p-2 w-30">Amount</th>
                                         </tr>
                                     </thead>
 
@@ -620,14 +635,14 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                         </table>
 
                                         <div className="w-full flex flex-col items-start p-2">
-                                            <p>Grand Total Payable INR(₹): {formatCurrency(invoiceData?.grandTotal || 0)}</p>
+                                            <p className="font-bold">Grand Total Payable INR(₹): {formatCurrency(invoiceData?.grandTotal || 0)}</p>
                                             <p className="font-bold">In Words INR(₹): {numberToWords(invoiceData?.grandTotal || 0)}</p>
                                         </div>
                                     </div>
 
                                     <div className="border-t border-primary px-4 py-1 flex flex-col justify-between items-end">
                                         <p className="uppercase">For Thaver tech private limited</p>
-                                        <p className="">Authorised Signature</p>
+                                        <p className="">Authorised Signatory</p>
 
                                     </div>
                                 </div>
@@ -639,7 +654,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                         <div className="px-1 flex justify-between">
                             <p>This is a Computer Generated Invoice</p>
-                            <p>SUBJECT TO HARYANA JURISDICTION</p>
+                            <p>Subject to Haryana Jurisdiction</p>
                         </div>
 
                     </div>
