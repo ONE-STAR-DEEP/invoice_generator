@@ -426,7 +426,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                     <div id="invoice-print" className="p-10 print:p-0">
                         {/* Scrollable Body */}
-                        <div className="flex-1 border border-black">
+                        <div className="flex-1 border border-black bg-[url('/light-logo.png')] bg-size-[200px_200px] bg-no-repeat bg-center">
 
                             {/* HEADER */}
                             <header className="grid grid-cols-[20%_60%_20%] my-2 print:no-break">
@@ -452,92 +452,85 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                             <section className="grid grid-cols-2 border-t border-b border-black justify-between mb-6 print:no-break">
 
                                 <div className="p-2 border-b border-r border-black grid grid-cols-[120px_1fr] gap-y-1 text-sm">
-                                    <span className="font-medium">Name:</span>
-                                    <span className="font-bold">{companyData?.name}</span>
+                                    <span className="font-medium">Name</span>
+                                    <span className="font-bold">: {companyData?.name}</span>
 
-                                    <span className="font-medium">Address:</span>
-                                    <span>
-                                        {companyData?.address_line1}, {companyData?.city}-{companyData?.pincode}
+                                    <span className="font-medium">Address</span>
+                                    <span>: {companyData?.address_line1}, {companyData?.city}-{companyData?.pincode}
                                     </span>
 
-                                    <span className="font-medium">Phone:</span>
-                                    <span>{companyData?.phone}</span>
+                                    <span className="font-medium">Phone</span>
+                                    <span>: {companyData?.phone}</span>
 
-                                    <span className="font-medium">Email:</span>
+                                    <span className="font-medium">Email</span>
                                     <span>
                                         <a href={`mailto:${companyData?.email}`}>
-                                            {companyData?.email}
+                                            : {companyData?.email}
                                         </a>
                                     </span>
 
-                                    <span className="font-medium">CIN:</span>
-                                    <span>{companyData?.cin}</span>
-
-                                    <span className="font-medium">GST:</span>
-                                    <span>{companyData?.gst}</span>
+                                    <span className="font-medium">GST</span>
+                                    <span>: {companyData?.gst}</span>
                                 </div>
 
                                 <div className="b-border grid grid-cols-[110px_1fr] gap-y-1 text-sm">
-                                    <p className="font-medium b-border pt-1 pl-2">Invoice No:</p>
-                                    <p className="font-bold b-border pt-1 pl-2">{invoiceData?.invoiceId}</p>
+                                    <p className="font-medium b-border pt-1 pl-2">Invoice No</p>
+                                    <p className="font-bold b-border pt-1">: {invoiceData?.invoiceId}</p>
 
-                                    <span className="font-medium b-border pl-2">Invoice Date:</span>
-                                    <span className=" b-border pl-2">
-                                        {formatIST(invoiceData?.createdAt)}
-                                    </span>
+                                    <span className="font-medium b-border pl-2">Invoice Date</span>
+                                    <span className=" b-border">: {formatIST(invoiceData?.createdAt)}</span>
 
-                                    <span className="font-medium b-border pl-2">GST No:</span>
-                                    <span className="b-border pl-2">{invoiceData?.client.gstNumber}</span>
+                                    <span className="font-medium b-border pl-2">GST No</span>
+                                    <span className="b-border">: {invoiceData?.client.gstNumber}</span>
 
                                     <span className="font-medium b-border pl-2">PO No:</span>
-                                    <span className="b-border pl-2">
-                                        {invoiceData?.poNo}
+                                    <span className="b-border">: {invoiceData?.poNo}
                                     </span>
 
-                                    <span className="font-medium b-border pl-2">PO Date:</span>
-                                    <span className="b-border pl-2">{formatDateOnly(invoiceData?.poDate)}</span>
+                                    <span className="font-medium b-border pl-2">PO Date</span>
+                                    <span className="b-border">: {formatDateOnly(invoiceData?.poDate)}</span>
 
-                                    <span className="font-medium pl-2">Reference:</span>
-                                    <span className="pl-2">{invoiceData?.reference}</span>
+                                    <span className="font-medium pl-2">Reference</span>
+                                    <span className="">: {invoiceData?.reference}</span>
                                 </div>
 
                                 <div className="border-r border-black p-2 grid grid-cols-[120px_1fr] gap-y-1 text-sm">
-                                    <span className="font-medium">Account Name:</span>
-                                    <span className="">{accountData?.account_name}</span>
+                                    <span className="font-medium">Account Name</span>
+                                    <span className="">: {accountData?.account_name}</span>
+        
+                                    <span className="font-medium">Account No</span>
+                                    <span>: {accountData?.account_number}</span>
 
-                                    <span className="font-medium">Account No:</span>
-                                    <span>{accountData?.account_number}</span>
+                                    <span className="font-medium">IFSC</span>
+                                    <span>: {accountData?.ifsc_code}</span>
 
-                                    <span className="font-medium">IFSC:</span>
-                                    <span>{accountData?.ifsc_code}</span>
+                                    <span className="font-medium">Bank Name</span>
+                                    <span>: {accountData?.bank_name}</span>
 
-                                    <span className="font-medium">Bank Name:</span>
-                                    <span>{accountData?.bank_name}</span>
-
-                                    <span className="font-medium">Branch:</span>
-                                    <span>{accountData?.branch}</span>
+                                    <span className="font-medium">Branch</span>
+                                    <span>: {accountData?.branch}</span>
                                 </div>
 
-                                <div className="p-2">
-                                    <div className="grid grid-cols-[110px_1fr] gap-y-1 text-sm">
-                                        <p className="font-semibold mb-2">Buyer / Bill to</p>
-                                        <span className="font-bold">{invoiceData?.client.companyName}</span>
+                                <div className="">
+                                    <div className="grid grid-cols-[110px_1fr] text-sm">
+                                        <span className="font-semibold b-border pl-2 py-1">Buyer / Bill to</span>
+                                        <span className="font-bold b-border py-1">: {invoiceData?.client.companyName}</span>
 
-                                        <span className="font-medium">Address:</span>
-                                        <span>{invoiceData?.client.address}, {invoiceData?.client.city}, {invoiceData?.client.state}, {invoiceData?.client.pincode}</span>
+                                        <span className="font-medium b-border pl-2 py-1">Address</span>
+                                        <span className="b-border py-1">: {invoiceData?.client.address}, {invoiceData?.client.city}, {invoiceData?.client.state}, {invoiceData?.client.pincode}</span>
+        
+                                        <span className="font-medium  b-border pl-2 py-1">Phone</span>
+                                        <span className="b-border py-1">: {invoiceData?.client.phone}</span>
 
-                                        <span className="font-medium">Phone</span>
-                                        <span>{invoiceData?.client.phone}</span>
-
-                                        <span className="font-medium">Email:</span>
-                                        <span>{invoiceData?.client.email}</span>
+                                        <span className="font-medium pl-2 py-1">Email</span>
+                                        <span className="py-1">: {invoiceData?.client.email}</span>
                                     </div>
                                 </div>
                             </section>
 
                             {/* TABLE */}
                             <section className="mt-4">
-                                <table className="w-full border-t border-b border-collapse">
+                                <table className="w-full border-t border-b border-collapse ">
                                     <thead className="bg-secondary print:bg-none">
                                         <tr>
                                             <th className="border-r p-2 w-16">S No</th>
