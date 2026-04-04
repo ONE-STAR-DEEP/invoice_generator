@@ -16,7 +16,6 @@ import { fetchInvoiceById, updateStatus } from "@/lib/actions/invoice";
 import { BankAccount, FetchedInvoice, SellerCompany } from "@/lib/types/dataTypes";
 import Image from "next/image";
 import { fetchBankAccountData, fetchCompanyData } from "@/lib/actions/users";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../Users/roleContext";
 import { triggerClientRefresh } from "../Clients/ViewInvoices";
@@ -147,7 +146,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
         fetchData();
     }, [open, id])
 
-    const minRows = 20;
+    const minRows = 22;
     const emptyRows = invoiceData ? Math.max(0, minRows - invoiceData.items.length) : 0;
 
     const handlePrint = () => {
@@ -209,16 +208,16 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
   margin-left: -8px;
 }
 
+    #invoice-print div section div p{
+    font-size: 13px !important;
+    }
+
   #invoice-print {
     width: 100%;
     font-size: 12px !important;
     line-height: 1.4 !important;
   }
 
-  #invoice-print {
-  font-size: 12px;
-  line-height: 1.4;
-}
 
   /* headings */
   #invoice-print h1 { font-size: 20px !important; }
@@ -426,7 +425,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                     <div id="invoice-print" className="p-10 print:p-0">
                         {/* Scrollable Body */}
-                        <div className="flex-1 border border-black bg-[url('/light-logo.png')] bg-size-[200px_200px] bg-no-repeat bg-center">
+                        <div className="flex-1 border border-primary bg-[url('/light-logo-25.png')] bg-size-[200px_200px] bg-no-repeat bg-center">
 
                             {/* HEADER */}
                             <header className="grid grid-cols-[20%_60%_20%] my-2 print:no-break">
@@ -449,170 +448,196 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                             </header>
 
-                            <section className="grid grid-cols-2 border-t border-b border-black justify-between mb-6 print:no-break">
+                            <section className="grid grid-cols-2 border-t border-b border-primary justify-between mb-6 print:no-break">
 
-                                <div className="p-2 border-b border-r border-black grid grid-cols-[120px_1fr] gap-y-1 text-sm">
-                                    <span className="font-medium">Name</span>
-                                    <span className="font-bold">: {companyData?.name}</span>
+                                <div className="p-2 border-b border-r border-primary grid grid-cols-1 text-sm">
+                                    <p className="font-bold">{companyData?.name}</p>
 
-                                    <span className="font-medium">Address</span>
-                                    <span>: {companyData?.address_line1}, {companyData?.city}-{companyData?.pincode}
-                                    </span>
-
-                                    <span className="font-medium">Phone</span>
-                                    <span>: {companyData?.phone}</span>
-
-                                    <span className="font-medium">Email</span>
-                                    <span>
-                                        <a href={`mailto:${companyData?.email}`}>
-                                            : {companyData?.email}
-                                        </a>
-                                    </span>
-
-                                    <span className="font-medium">GST</span>
-                                    <span>: {companyData?.gst}</span>
+                                    <p>{companyData?.address_line1}, <span className="text-nowrap">{companyData?.city}, {companyData?.state}-{companyData?.pincode}</span></p>
+                                    <p>GSTIN: {companyData?.gst}</p>
                                 </div>
 
-                                <div className="b-border grid grid-cols-[110px_1fr] gap-y-1 text-sm">
-                                    <p className="font-medium b-border pt-1 pl-2">Invoice No</p>
-                                    <p className="font-bold b-border pt-1">: {invoiceData?.invoiceId}</p>
+                                <div className="py-1 b-border grid grid-cols-[100px_1fr] text-sm">
+                                    <p className="font-medium b-border pl-2">Invoice No</p>
+                                    <p className="font-bold b-border">: {invoiceData?.invoiceId} | Invoice Date: {formatDateOnly(invoiceData?.createdAt)}</p>
 
-                                    <span className="font-medium b-border pl-2">Invoice Date</span>
-                                    <span className=" b-border">: {formatIST(invoiceData?.createdAt)}</span>
+                                    <p className="font-medium b-border pl-2">PO No:</p>
+                                    <p className="b-border">: {invoiceData?.poNo} | PO Date: {formatDateOnly(invoiceData?.poDate)}</p>
 
-                                    <span className="font-medium b-border pl-2">GST No</span>
-                                    <span className="b-border">: {invoiceData?.client.gstNumber}</span>
+                                    <p className="font-medium pl-2">Reference</p>
+                                    <p className="">: {invoiceData?.reference}</p>
 
-                                    <span className="font-medium b-border pl-2">PO No:</span>
-                                    <span className="b-border">: {invoiceData?.poNo}
-                                    </span>
-
-                                    <span className="font-medium b-border pl-2">PO Date</span>
-                                    <span className="b-border">: {formatDateOnly(invoiceData?.poDate)}</span>
-
-                                    <span className="font-medium pl-2">Reference</span>
-                                    <span className="">: {invoiceData?.reference}</span>
                                 </div>
 
-                                <div className="border-r border-black p-2 grid grid-cols-[120px_1fr] gap-y-1 text-sm">
-                                    <span className="font-medium">Account Name</span>
-                                    <span className="">: {accountData?.account_name}</span>
-        
-                                    <span className="font-medium">Account No</span>
-                                    <span>: {accountData?.account_number}</span>
+                                <div className="border-r border-primary p-2 grid grid-cols-[100px_1fr] text-sm">
+                                    <p className="font-medium">Account Name</p>
+                                    <p className="">: {accountData?.account_name}</p>
 
-                                    <span className="font-medium">IFSC</span>
-                                    <span>: {accountData?.ifsc_code}</span>
+                                    <p className="font-medium">Account No</p>
+                                    <p>: {accountData?.account_number}</p>
 
-                                    <span className="font-medium">Bank Name</span>
-                                    <span>: {accountData?.bank_name}</span>
+                                    <p className="font-medium">IFSC</p>
+                                    <p>: {accountData?.ifsc_code}</p>
 
-                                    <span className="font-medium">Branch</span>
-                                    <span>: {accountData?.branch}</span>
+                                    <p className="font-medium">Bank Name</p>
+                                    <p>: {accountData?.bank_name}</p>
+
+                                    <p className="font-medium">Branch</p>
+                                    <p>: {accountData?.branch}</p>
                                 </div>
 
-                                <div className="">
-                                    <div className="grid grid-cols-[110px_1fr] text-sm">
-                                        <span className="font-semibold b-border pl-2 py-1">Buyer / Bill to</span>
-                                        <span className="font-bold b-border py-1">: {invoiceData?.client.companyName}</span>
+                                <div className="grid grid-cols-1 text-sm p-2">
+                                    <p className="font-bold">Buyer (Bill to) : {invoiceData?.client.companyName}</p>
 
-                                        <span className="font-medium b-border pl-2 py-1">Address</span>
-                                        <span className="b-border py-1">: {invoiceData?.client.address}, {invoiceData?.client.city}, {invoiceData?.client.state}, {invoiceData?.client.pincode}</span>
-        
-                                        <span className="font-medium  b-border pl-2 py-1">Phone</span>
-                                        <span className="b-border py-1">: {invoiceData?.client.phone}</span>
+                                    <p className="">{invoiceData?.client.address}, {invoiceData?.client.city}, {invoiceData?.client.state}, {invoiceData?.client.pincode}</p>
 
-                                        <span className="font-medium pl-2 py-1">Email</span>
-                                        <span className="py-1">: {invoiceData?.client.email}</span>
-                                    </div>
+                                    <p className="font-medium">GST No: {invoiceData?.client.gstNumber}</p>
+
+                                    <p className="">{invoiceData?.client.phone}</p>
+                                    <p className="">State Name:{invoiceData?.client.state}</p>
+
+                                    {/* <p className="py-1">: {invoiceData?.client.email}</p> */}
                                 </div>
                             </section>
 
                             {/* TABLE */}
                             <section className="mt-4">
-                                <table className="w-full border-t border-b border-collapse ">
-                                    <thead className="bg-secondary print:bg-none">
+                                <table className="w-full border-t border-b border-primary border-collapse ">
+                                    <thead className="bg-secondary border-b border-primary print:bg-none">
                                         <tr>
-                                            <th className="border-r p-2 w-16">S No</th>
-                                            <th className="border-r p-2 text-left">Service</th>
-                                            <th className="border-r p-2">HSN Code</th>
-
-                                            <th className="border-r p-2">Cost</th>
+                                            <th className="border-r border-primary p-2 w-16">S No</th>
+                                            <th className="border-r border-primary p-2 text-left">Description of Services</th>
+                                            <th className="border-r border-primary p-2">HSN/SAC Code</th>
+                                            <th className="p-2">Amount</th>
                                         </tr>
                                     </thead>
 
                                     <tbody>
                                         {invoiceData?.items.map((item, i) => (
                                             <tr key={i} className="text-center print:break-inside-avoid">
-                                                <td className="border-r p-1">{i + 1}</td>
-                                                <td className="border-r px-3 text-left">{item.service}</td>
-                                                <td className="border-r p-1">{item.hsn}</td>
-                                                <td className="border-r px-3 text-right">{formatCurrency(item.cost)}</td>
+                                                <td className="border-r border-primary p-1">{i + 1}</td>
+                                                <td className="border-r border-primary px-3 text-left">{item.service}</td>
+                                                <td className="border-r border-primary p-1">{item.hsn}</td>
+                                                <td className="px-3 text-right">{formatCurrency(item.cost)}</td>
                                             </tr>
                                         ))}
 
                                         {Array.from({ length: Math.max(0, emptyRows) }).map((_, i) => (
                                             <tr key={`empty-${i}`} className="text-center">
-                                                <td className="border-r p-1">&nbsp;</td>
-                                                <td className="border-r p-1"></td>
-                                                <td className="border-r p-1"></td>
-                                                <td className="border-r p-1"></td>
+                                                <td className="border-r border-primary p-1">&nbsp;</td>
+                                                <td className="border-r border-primary p-1"></td>
+                                                <td className="border-r border-primary p-1"></td>
+                                                <td className=" p-1"></td>
                                             </tr>
                                         ))}
+                                        <tr className="text-right font-bold">
+                                            <td className="border-r border-primary p-1"></td>
+                                            <td className="border-r border-primary p-1"></td>
+                                            <td className="border-r border-t border-primary p-1">Total Amount (INR)</td>
+                                            <td className="p-1 border-t border-primary">{formatCurrency(invoiceData?.subTotal)}</td>
+                                        </tr>
                                     </tbody>
 
                                 </table>
                             </section>
 
-                            {/* TOTALS */}
-                            <section className="border-t border-black mt-6 print:no-break">
-                                <div className="border-b border-black flex justify-between">
-                                    <div className="border-r border-black p-2 w-1/3">
-                                        <div className="flex justify-between">
-                                            <span>Subtotal</span>
-                                            <span>{formatCurrency(invoiceData?.subTotal)}</span>
-                                        </div>
-                                        {invoiceData?.igst === 0 ?
-                                            <>
-                                                <div className="flex justify-between">
-                                                    <span>CGST</span>
-                                                    <span>{formatCurrency(invoiceData?.cgst)}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span>SGST</span>
-                                                    <span>{formatCurrency(invoiceData?.sgst)}</span>
-                                                </div>
+                            <div className="p-1">
+                                <p className="font-bold">Taxable Amount INR(₹): {numberToWords(invoiceData?.subTotal || 0)}</p>
+                            </div>
 
-                                            </>
-                                            :
-                                            <div className="flex justify-between">
-                                                <span>IGST</span>
-                                                <span>{formatCurrency(invoiceData?.igst)}</span>
-                                            </div>
-                                        }
-                                        <div className="flex justify-between font-bold">
-                                            <span>Total</span>
-                                            <span>{formatCurrency(invoiceData?.grandTotal)}</span>
+                            {/* TOTALS */}
+                            <section className="print:no-break">
+                                <div className="grid grid-cols-[60%_40%]">
+                                    <div className="border-r border-primary">
+                                        <table className="w-full border-collapse text-center text-sm">
+                                            <thead>
+                                                <tr className="border-b border-t border-primary">
+                                                    <th rowSpan={2} className="p-1 ">Taxable Value</th>
+
+                                                    {/* Dynamic grouped heading */}
+                                                    <th
+                                                        colSpan={invoiceData?.igst === 0 ? 4 : 2}
+                                                        className="p-1 border border-primary"
+                                                    >
+                                                        Integrated Tax
+                                                    </th>
+
+                                                    <th rowSpan={2} className="p-1 border border-primary border-r-0">Total Tax</th>
+                                                </tr>
+
+                                                <tr className="border-b border-primary">
+                                                    {invoiceData?.igst === 0 ? (
+                                                        <>
+                                                            <th className="p-1 border border-primary">CGST %</th>
+                                                            <th className="p-1 border border-primary">CGST</th>
+                                                            <th className="p-1 border border-primary">SGST %</th>
+                                                            <th className="p-1 border border-primary">SGST</th>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <th className="p-1 border border-primary">IGST %</th>
+                                                            <th className="p-1 border border-primary">IGST</th>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                            </thead>
+
+                                            <tbody>
+                                                <tr>
+                                                    <td className="p-1 border border-primary border-l-0">
+                                                        {formatCurrency(invoiceData?.subTotal)}
+                                                    </td>
+
+                                                    {invoiceData?.igst === 0 ? (
+                                                        <>
+                                                            <td className="p-1 border border-primary">9%</td>
+                                                            <td className="p-1 border border-primary">
+                                                                {formatCurrency(invoiceData?.cgst)}
+                                                            </td>
+                                                            <td className="p-1 border border-primary">9%</td>
+                                                            <td className="p-1 border border-primary">
+                                                                {formatCurrency(invoiceData?.sgst)}
+                                                            </td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="p-1 border border-primary">18%</td>
+                                                            <td className="p-1 border border-primary">
+                                                                {formatCurrency(invoiceData?.igst)}
+                                                            </td>
+                                                        </>
+                                                    )}
+
+                                                    <td className="p-1 border border-primary border-r-0 font-bold">
+                                                        {formatCurrency(
+                                                            (invoiceData?.cgst || 0) +
+                                                            (invoiceData?.sgst || 0) +
+                                                            (invoiceData?.igst || 0)
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+                                        <div className="w-full flex flex-col items-start p-2">
+                                            <p>Grand Total Payable INR(₹): {formatCurrency(invoiceData?.grandTotal || 0)}</p>
+                                            <p className="font-bold">In Words INR(₹): {numberToWords(invoiceData?.grandTotal || 0)}</p>
                                         </div>
                                     </div>
 
-                                    <div className=" px-4 py-1 flex flex-col justify-between items-end">
+                                    <div className="border-t border-primary px-4 py-1 flex flex-col justify-between items-end">
                                         <p className="uppercase">For Thaver tech private limited</p>
                                         <p className="">Authorised Signature</p>
 
                                     </div>
-
                                 </div>
-                                <div className="w-full flex flex-col items-start p-2">
-                                    <p>Grand Total Payable(in words)</p>
-                                    <p className="font-bold">INR(₹): {numberToWords(invoiceData?.grandTotal || 0)}</p>
-                                </div>
-
                             </section>
+
+                            <div className="p-2 border-t border-primary text-xs font-semibold">Declaration: We declare that this invoice shows the actual price of the Services described and that all particulars are true and correct.</div>
 
                         </div>
 
-                        <div className="px-2 flex justify-between">
+                        <div className="px-1 flex justify-between">
                             <p>This is a Computer Generated Invoice</p>
                             <p>SUBJECT TO HARYANA JURISDICTION</p>
                         </div>

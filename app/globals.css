@@ -131,7 +131,7 @@
   }
 
   .b-border{
-    @apply border-b border-black;
+    @apply border-b border-primary;
   }
 }
 
