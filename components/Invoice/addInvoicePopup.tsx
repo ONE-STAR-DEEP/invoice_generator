@@ -432,7 +432,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                 {data.currency === "USD" &&
                                     <div>
                                         <Field>
-                                            <Label htmlFor="reference">Dollar Rates ()</Label>
+                                            <Label htmlFor="reference">Dollar Rates (₹)</Label>
                                             <Input id="tax_rate" name="tax_rate" placeholder="Tax Rate" required
                                                 value={data.dollar_rate}
                                                 className="h-10"
