@@ -723,24 +723,49 @@ export const fetchClientReport = async (
     const [rows] = await conn.query<ClientReport[]>(
       `
       SELECT 
-        client_id,
-        client_name,
+  client_id,
+  client_name,
 
-        SUM(grand_total) AS total_amount,
+  COALESCE(ROUND(SUM(
+    CASE 
+      WHEN currency = 'USD' THEN grand_total * dollar_rate
+      ELSE grand_total
+    END
+  ), 2), 0) AS total_amount,
 
-        SUM(CASE WHEN status = 'paid' THEN grand_total ELSE 0 END) AS paid_amount,
-        SUM(CASE WHEN status = 'pending' THEN grand_total ELSE 0 END) AS pending_amount,
+  COALESCE(ROUND(SUM(
+    CASE 
+      WHEN status = 'paid' THEN 
+        CASE 
+          WHEN currency = 'USD' THEN grand_total * dollar_rate
+          ELSE grand_total
+        END
+      ELSE 0 
+    END
+  ), 2), 0) AS paid_amount,
 
-        COUNT(*) AS total_invoices,
-        SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS paid_invoices,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_invoices
+  COALESCE(ROUND(SUM(
+    CASE 
+      WHEN status = 'pending' THEN 
+        CASE 
+          WHEN currency = 'USD' THEN grand_total * dollar_rate
+          ELSE grand_total
+        END
+      ELSE 0 
+    END
+  ), 2), 0) AS pending_amount,
 
-      FROM invoice
+  COUNT(*) AS total_invoices,
 
-      GROUP BY client_id, client_name
+  SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS paid_invoices,
+  SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_invoices
 
-      ORDER BY total_amount DESC
-      LIMIT ? OFFSET ?
+FROM invoice
+
+GROUP BY client_id, client_name
+
+ORDER BY total_amount DESC
+LIMIT ? OFFSET ?
       `,
       [pageSize, offset]
     );
@@ -794,7 +819,12 @@ export const fetchClientReportByState = async (
   i.client_city,
   i.client_state,
 
-  SUM(i.grand_total) AS total_amount,
+  COALESCE(ROUND(SUM(
+    CASE 
+      WHEN i.currency = 'USD' THEN i.grand_total * i.dollar_rate
+      ELSE i.grand_total
+    END
+  ), 2), 0) AS total_amount,
   COUNT(*) AS total_invoices,
   SUM(ii.item_count) AS total_items
 
@@ -824,7 +854,7 @@ LEFT JOIN (
       ORDER BY total_amount DESC
       LIMIT ? OFFSET ?
     `;
-    
+
 
     params.push(pageSize, offset);
 
