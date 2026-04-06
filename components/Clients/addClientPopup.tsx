@@ -176,7 +176,7 @@ const AddClientPopup = () => {
                                 </Field>
                                 <Field>
                                     <Label htmlFor="email">Email</Label>
-                                    <Input id="email" name="email" placeholder="ex@example.com" required
+                                    <Input id="email" name="email" placeholder="ex@example.com"
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
@@ -188,7 +188,7 @@ const AddClientPopup = () => {
                                 </Field>
                                 <Field>
                                     <Label htmlFor="phone">Phone</Label>
-                                    <Input id="phone" name="phone" placeholder="999999XXXX" required
+                                    <Input id="phone" name="phone" placeholder="999999XXXX"
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
@@ -357,7 +357,7 @@ const AddClientPopup = () => {
 
                                 <Field>
                                     <Label htmlFor="assignedPerson">Person</Label>
-                                    <Input id="assignedPerson" name="assignedPerson" placeholder="Full Name" required
+                                    <Input id="assignedPerson" name="assignedPerson" placeholder="Full Name"
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
@@ -369,7 +369,7 @@ const AddClientPopup = () => {
                                 </Field>
                                 <Field>
                                     <Label htmlFor="personDesignation">Person Designation</Label>
-                                    <Input id="personDesignation" name="personDesignation" placeholder="Designation" required
+                                    <Input id="personDesignation" name="personDesignation" placeholder="Designation"
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
