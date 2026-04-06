@@ -485,8 +485,8 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                 <div className="b-border grid grid-cols-1 text-sm">
 
                                     <div className="grid grid-cols-[60%_40%] b-border h-full m-0">
-                                        <span className="py-1 font-medium border-r border-primary pl-2 h-full">Invoice<span className="font-bold">: {invoiceData?.invoiceId}</span></span>
-                                        <span className="py-1 pl-2 h-full">Dated: {formatDateOnly(invoiceData?.createdAt)}</span>
+                                        <span className="py-1 font-medium border-r border-primary pl-1 h-full">Invoice<span className="font-bold">: {invoiceData?.invoiceId}</span></span>
+                                        <span className="py-1 pl-1 h-full">Dated: {formatDateOnly(invoiceData?.createdAt)}</span>
                                     </div>
 
                                     <div className="grid grid-cols-2 b-border">
