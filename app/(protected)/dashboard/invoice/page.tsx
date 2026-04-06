@@ -33,6 +33,8 @@ const InvoicePage = async ({ searchParams }: PageProps) => {
 
     const allInvoices = await fetchAllInvoices(page, limit, search, status);
 
+    console.log(allInvoices)
+
     return (
         <div className="flex flex-col flex-1 space-y-6 min-h-0">
 

@@ -59,7 +59,7 @@ export const fetchServices = async () => {
 export const insertInvoice = async (
   data: InvoiceData,
   items: InvoiceItem[],
-  isIGST: boolean
+  custom_tax: number
 ) => {
   const conn = await db.getConnection();
 
@@ -81,6 +81,46 @@ export const insertInvoice = async (
     }
 
     await conn.beginTransaction();
+
+    const isGST = data.invoiceType === "GST";
+    const isCustomTax = data.invoiceType === "CUSTOM_TAX";
+
+    const isTaxable = isGST || isCustomTax;
+
+    let isIGST = false;
+
+    if (isGST) {
+
+      const [company]: any = await conn.execute(
+        `SELECT gst FROM companies LIMIT 1`
+      )
+
+      const companyGST = company[0].gst;
+
+      if (!companyGST) {
+        throw new Error("Company GST not found");
+      }
+
+      const [clientRows]: any = await conn.execute(
+        `SELECT gst_number FROM clients WHERE id = ?`,
+        [data.clientId]
+      );
+
+      const clientGST = clientRows[0]?.gst_number;
+
+      if (!clientGST) {
+        throw new Error("GST required for taxable invoice");
+      }
+
+      const companyState = companyGST.slice(0, 2);
+      const clientState = clientGST?.slice(0, 2);
+
+      isIGST =
+        isGST &&
+        companyState &&
+        clientState &&
+        companyState !== clientState;
+    }
 
     let subTotal = 0;
     let totalIGST = 0, totalCGST = 0, totalSGST = 0;
@@ -118,17 +158,21 @@ export const insertInvoice = async (
 
       let itemIGST = 0, itemCGST = 0, itemSGST = 0;
 
-      if (isIGST) {
-        itemIGST = round((cost * GST.IGST) / 100);
-      } else {
-        itemCGST = round((cost * GST.CGST) / 100);
-        itemSGST = round((cost * GST.SGST) / 100);
-      }
-
       subTotal += cost;
-      totalIGST += itemIGST;
-      totalCGST += itemCGST;
-      totalSGST += itemSGST;
+
+      if (isGST) {
+
+        if (isIGST) {
+          itemIGST = round((cost * GST.IGST) / 100);
+        } else {
+          itemCGST = round((cost * GST.CGST) / 100);
+          itemSGST = round((cost * GST.SGST) / 100);
+        }
+
+        totalIGST += itemIGST;
+        totalCGST += itemCGST;
+        totalSGST += itemSGST;
+      }
 
       invoiceItemsValues.push([
         serviceId,
@@ -140,9 +184,15 @@ export const insertInvoice = async (
       ]);
     }
 
-    const grandTotal = round(
-      subTotal + totalIGST + totalCGST + totalSGST
+    const totalTax = round(
+      isCustomTax
+        ? (subTotal * custom_tax) / 100
+        : (totalIGST + totalCGST + totalSGST)
     );
+
+    const grandTotal = round(subTotal + totalTax);
+
+    const isINR = data.currency === "INR";
 
     const [invoiceResult]: any = await conn.execute(
       `
@@ -150,6 +200,7 @@ export const insertInvoice = async (
         client_id,
         client_name,
         client_gst_no,
+        tax_number,
         client_address,
         client_phone,
         client_email,
@@ -157,10 +208,16 @@ export const insertInvoice = async (
         client_state,
         client_country,
         client_pincode,
+        currency,
         sub_total,
+        total_tax,
         igst,
         cgst,
         sgst,
+        igst_rate,
+        cgst_rate,
+        sgst_rate,
+        custom_rate,
         grand_total,
         pono,
         podate,
@@ -171,6 +228,7 @@ export const insertInvoice = async (
         c.id,
         c.company_name,
         c.gst_number,
+        c.tax_number,
         c.address,
         c.phone,
         c.email,
@@ -178,15 +236,21 @@ export const insertInvoice = async (
         c.state,
         c.country,
         c.pincode,
-        ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       FROM clients c
       WHERE c.id = ?
       `,
       [
+        data.currency,
         subTotal,
+        totalTax,
         totalIGST,
         totalCGST,
         totalSGST,
+        (isIGST && !isCustomTax && isINR) ? GST.IGST : 0,
+        (!isIGST && !isCustomTax && isINR) ? GST.CGST : 0,
+        (!isIGST && !isCustomTax && isINR) ? GST.SGST : 0,
+        (isCustomTax) ? custom_tax : 0,
         grandTotal,
         data.PONo,
         data.PODate,
@@ -276,12 +340,14 @@ export const fetchAllInvoices = async (
     i.client_id,
     i.client_name,
     i.client_gst_no,
+    i.tax_number,
     i.client_email,
     i.client_phone,
     i.client_city,
     i.client_state,
     i.client_country,
     i.client_pincode,
+    i.currency,
     i.sub_total,
     i.grand_total,
     i.created_at,
@@ -500,6 +566,12 @@ export const fetchInvoiceById = async (invoiceId: number) => {
     'igst', i.igst,
     'cgst', i.cgst,
     'sgst', i.sgst,
+    'totalTax', i.total_tax,
+    'igstRate', i.igst_rate,
+    'cgstRate', i.cgst_rate,
+    'sgstRate', i.sgst_rate,
+    'customRate', i.custom_rate,
+    'currency', i.currency,
     'poNo', i.pono,
     'poDate', i.podate,
     'reference', i.reference,
@@ -511,6 +583,7 @@ export const fetchInvoiceById = async (invoiceId: number) => {
       'id', i.client_id,
       'companyName', i.client_name,
       'gstNumber', i.client_gst_no,
+      'taxNumber', tax_number,
       'email', i.client_email,
       'phone', i.client_phone,
       'address', i.client_address,

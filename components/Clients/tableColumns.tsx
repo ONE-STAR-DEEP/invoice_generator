@@ -26,12 +26,15 @@ export const columns: ColumnDef<ClientData>[] = [
     header: "Location",
   },
   {
-    accessorKey: "gst_number",
-    header: "GST",
+    id: "gst_or_tax",
+    header: "GST/TAX No",
+    accessorFn: (row) => row.gst_number || row.tax_number,
     cell: ({ row }) => (
-      <span className="text-xs font-mono">
-        {row.getValue("gst_number")}
-      </span>
+      <p className="text-xs font-mono">
+        { row.original.gst_number && <span className="text-blue-700">{row.original.gst_number}</span> }
+        { row.original.tax_number && <span className="text-green-700">{row.original.tax_number}</span> }
+        { !row.original.gst_number && !row.original.tax_number && <span>-</span> }
+      </p>
     ),
   },
   {
@@ -39,14 +42,14 @@ export const columns: ColumnDef<ClientData>[] = [
     header: "Assigned Person",
   },
   {
-  accessorKey: "id",
-  header: "Action",
-  cell: ({ row }) => {
-    const id = row.getValue("id");
+    accessorKey: "id",
+    header: "Action",
+    cell: ({ row }) => {
+      const id = row.getValue("id");
 
-    return (
-      <ViewInvoices id={Number(id)}/>
-    );
-  },
-}
+      return (
+        <ViewInvoices id={Number(id)} />
+      );
+    },
+  }
 ]

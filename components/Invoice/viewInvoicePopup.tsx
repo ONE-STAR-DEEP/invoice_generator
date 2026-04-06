@@ -44,41 +44,33 @@ export const formatIST = (date?: string | Date) => {
 };
 
 export const formatDateOnly = (date?: string | Date) => {
-  if (!date) return "-";
+    if (!date) return "-";
 
-  const parsed =
-    typeof date === "string"
-      ? new Date(date.replace(" ", "T"))
-      : date;
+    const parsed =
+        typeof date === "string"
+            ? new Date(date.replace(" ", "T"))
+            : date;
 
-  const day = parsed.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    timeZone: "Asia/Kolkata",
-  });
-
-  let month = parsed.toLocaleDateString("en-GB", {
-    month: "short",
-    timeZone: "Asia/Kolkata",
-  });
-
-  // Ensure proper case (First letter capital, rest lowercase)
-  month = month.charAt(0).toUpperCase() + month.slice(1).toLowerCase();
-
-  const year = parsed.toLocaleDateString("en-GB", {
-    year: "numeric",
-    timeZone: "Asia/Kolkata",
-  });
-
-  return `${day}-${month}-${year}`;
-};
-
-const formatCurrency = (num?: number) =>
-    num?.toLocaleString("en-IN", {
-        style: "currency",
-        currency: "INR",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+    const day = parsed.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        timeZone: "Asia/Kolkata",
     });
+
+    let month = parsed.toLocaleDateString("en-GB", {
+        month: "short",
+        timeZone: "Asia/Kolkata",
+    });
+
+    // Ensure proper case (First letter capital, rest lowercase)
+    month = month.charAt(0).toUpperCase() + month.slice(1).toLowerCase();
+
+    const year = parsed.toLocaleDateString("en-GB", {
+        year: "numeric",
+        timeZone: "Asia/Kolkata",
+    });
+
+    return `${day}-${month}-${year}`;
+};
 
 export const numberToWords = (num: number): string => {
     if (num === 0) return "Zero";
@@ -132,11 +124,20 @@ export const numberToWords = (num: number): string => {
 const ViewInvoicePopup = ({ id }: { id: number }) => {
 
     const [open, setOpen] = useState(false)
+    const [currencySymbol, setCurrencySymbol] = useState("₹")
     const [invoiceData, setInvoiceData] = useState<FetchedInvoice | null>(null)
     const [companyData, setCompanyData] = useState<SellerCompany | null>(null)
     const [accountData, setAccountData] = useState<BankAccount | null>(null)
 
     const router = useRouter()
+
+    const formatCurrency = (num?: number) =>
+        num?.toLocaleString("en-IN", {
+            style: "currency",
+            currency: invoiceData?.currency || "INR",
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
 
     useEffect(() => {
         if (!open) return;
@@ -148,6 +149,8 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                 fetchBankAccountData()
             ]);
             if (invoiceRes.data && companyRes.data && accountRes.data) {
+                console.log(invoiceRes.data.invoice)
+                setCurrencySymbol(invoiceRes.data.invoice.currency === "INR" ? "₹" : "$")
                 setInvoiceData(invoiceRes.data.invoice);
                 setCompanyData(companyRes.data);
                 setAccountData(accountRes.data)
@@ -159,7 +162,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
         fetchData();
     }, [open, id])
 
-    const minRows = 22;
+    const minRows = 25;
     const emptyRows = invoiceData ? Math.max(0, minRows - invoiceData.items.length) : 0;
 
     const handlePrint = () => {
@@ -193,7 +196,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
         <!-- Tailwind + existing styles -->
         <style>${styles}</style>
 
-        <!-- 🔥 PRINT LOCK STYLES -->
+        <!--  PRINT LOCK STYLES -->
         <style>
   @page {
     size: A4;
@@ -507,7 +510,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                                     <p className="">{invoiceData?.client.address}, {invoiceData?.client.city}, {invoiceData?.client.state}, {invoiceData?.client.pincode}</p>
 
-                                    <p className="font-medium">GST No: {invoiceData?.client.gstNumber}</p>
+                                    <p className="font-medium">{invoiceData?.client.gstNumber ? `GST No: ${invoiceData?.client.gstNumber}` : invoiceData?.client.taxNumber ? `Tax No: ${invoiceData?.client.taxNumber}` : <span>-</span>}</p>
 
                                     <p className="">State Name: {invoiceData?.client.state}</p>
 
@@ -522,8 +525,8 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                         <tr>
                                             <th className="border-r border-primary p-2 w-16">S No</th>
                                             <th className="border-r border-primary p-2 text-left">Description of Services</th>
-                                            <th className="border-r border-primary p-2  w-30">HSN/SAC Code</th>
-                                            <th className="p-2 w-30">Amount</th>
+                                            <th className="border-r border-primary p-2  w-36">HSN/SAC Code</th>
+                                            <th className="p-2 w-36">Amount</th>
                                         </tr>
                                     </thead>
 
@@ -548,8 +551,8 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                         <tr className="text-right font-bold">
                                             <td className="border-r border-primary p-1"></td>
                                             <td className="border-r border-primary p-1"></td>
-                                            <td className="border-r border-t border-primary p-1">Total Amount (INR)</td>
-                                            <td className="p-1 border-t border-primary">{formatCurrency(invoiceData?.subTotal)}</td>
+                                            <td className="border-r border-t border-primary p-1">Total Amount ({invoiceData?.currency})</td>
+                                            <td className="p-1 pr-2 border-t border-primary">{formatCurrency(invoiceData?.subTotal)}</td>
                                         </tr>
                                     </tbody>
 
@@ -557,7 +560,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                             </section>
 
                             <div className="p-1">
-                                <p className="font-bold">Taxable Amount INR(₹): {numberToWords(invoiceData?.subTotal || 0)}</p>
+                                <p className="font-bold">Taxable Amount {invoiceData?.currency}({currencySymbol}): {numberToWords(invoiceData?.subTotal || 0)}</p>
                             </div>
 
                             {/* TOTALS */}
@@ -571,7 +574,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                                                     {/* Dynamic grouped heading */}
                                                     <th
-                                                        colSpan={invoiceData?.igst === 0 ? 4 : 2}
+                                                        colSpan={(invoiceData?.igst === 0 && (invoiceData?.cgstRate && invoiceData?.sgstRate)) ? 4 : 2}
                                                         className="p-1 border border-primary"
                                                     >
                                                         Integrated Tax
@@ -583,10 +586,19 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                                 <tr className="border-b border-primary">
                                                     {invoiceData?.igst === 0 ? (
                                                         <>
-                                                            <th className="p-1 border border-primary">CGST %</th>
-                                                            <th className="p-1 border border-primary">CGST</th>
-                                                            <th className="p-1 border border-primary">SGST %</th>
-                                                            <th className="p-1 border border-primary">SGST</th>
+                                                            {(invoiceData?.cgstRate && invoiceData?.sgstRate) ?
+                                                                <>
+                                                                    <th className="p-1 border border-primary">CGST %</th>
+                                                                    <th className="p-1 border border-primary">CGST</th>
+                                                                    <th className="p-1 border border-primary">SGST %</th>
+                                                                    <th className="p-1 border border-primary">SGST</th>
+                                                                </>
+                                                                :
+                                                                <>
+                                                                    <th className="p-1 border border-primary">Tax Rate %</th>
+                                                                    <th className="p-1 border border-primary">Tax Amt</th>
+                                                                </>
+                                                            }
                                                         </>
                                                     ) : (
                                                         <>
@@ -605,14 +617,26 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                                                     {invoiceData?.igst === 0 ? (
                                                         <>
-                                                            <td className="p-1 border border-primary">9%</td>
-                                                            <td className="p-1 border border-primary">
-                                                                {formatCurrency(invoiceData?.cgst)}
-                                                            </td>
-                                                            <td className="p-1 border border-primary">9%</td>
-                                                            <td className="p-1 border border-primary">
-                                                                {formatCurrency(invoiceData?.sgst)}
-                                                            </td>
+                                                            {(invoiceData.cgstRate && invoiceData.sgstRate) ?
+                                                                <>
+
+                                                                    <td className="p-1 border border-primary">{invoiceData.cgstRate}%</td>
+                                                                    <td className="p-1 border border-primary">
+                                                                        {formatCurrency(invoiceData?.cgst)}
+                                                                    </td>
+                                                                    <td className="p-1 border border-primary">9%</td>
+                                                                    <td className="p-1 border border-primary">
+                                                                        {formatCurrency(invoiceData?.sgst)}
+                                                                    </td>
+                                                                </>
+                                                                :
+                                                                <>
+                                                                    <td className="p-1 border border-primary">{invoiceData.customRate}%</td>
+                                                                    <td className="p-1 border border-primary">
+                                                                        {formatCurrency(invoiceData?.totalTax || 0)}
+                                                                    </td>
+                                                                </>
+                                                            }
                                                         </>
                                                     ) : (
                                                         <>
@@ -624,19 +648,23 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                                     )}
 
                                                     <td className="p-1 border border-primary border-r-0 font-bold">
-                                                        {formatCurrency(
-                                                            (invoiceData?.cgst || 0) +
-                                                            (invoiceData?.sgst || 0) +
-                                                            (invoiceData?.igst || 0)
-                                                        )}
+                                                        {
+                                                            invoiceData?.totalTax ?
+                                                                formatCurrency(invoiceData.totalTax)
+                                                                :
+                                                                formatCurrency(
+                                                                    (invoiceData?.cgst || 0) +
+                                                                    (invoiceData?.sgst || 0) +
+                                                                    (invoiceData?.igst || 0)
+                                                                )}
                                                     </td>
                                                 </tr>
                                             </tbody>
                                         </table>
 
                                         <div className="w-full flex flex-col items-start p-2">
-                                            <p className="font-bold">Grand Total Payable INR(₹): {formatCurrency(invoiceData?.grandTotal || 0)}</p>
-                                            <p className="font-bold">In Words INR(₹): {numberToWords(invoiceData?.grandTotal || 0)}</p>
+                                            <p className="font-bold">Grand Total Payable {invoiceData?.currency}({currencySymbol}): {formatCurrency(invoiceData?.grandTotal || 0)}</p>
+                                            <p className="font-bold">In Words {invoiceData?.currency}({currencySymbol}): {numberToWords(invoiceData?.grandTotal || 0)}</p>
                                         </div>
                                     </div>
 

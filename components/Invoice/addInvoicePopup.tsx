@@ -12,9 +12,10 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 
 import { Button } from "../ui/button";
-import { IndianRupee, Plus, Trash } from "lucide-react";
+import { Plus, Trash } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CreatableSelect from "react-select/creatable";
@@ -28,7 +29,9 @@ type ClientOption = {
     value: number
 }
 
-type InvoiceType = "GST" | "NON_GST" | "EXPORT"
+type InvoiceType = "GST" | "NON_GST" | "NON_TAXABLE" | "CUSTOM_TAX"
+
+type CurrencySymbol = "₹" | "$";
 
 type Option = {
     label: string
@@ -82,6 +85,12 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
     const router = useRouter();
     const [mounted, setMounted] = useState(false)
 
+
+    const [currencySymbol, setCurrencySymbol] = useState<CurrencySymbol>("₹");
+    const [open, setOpen] = useState(false)
+    const [customTax, setCustomTax] = useState(0)
+    const [inputValues, setInputValues] = useState<Record<string, string>>({})
+
     const user = useAuth()
 
     useEffect(() => {
@@ -101,15 +110,20 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
         }))
 
     const invoiceTypeOptions: Option[] = [
-        { label: "GST Invoice", value: "GST" }
+        { label: "GST Invoice", value: "GST" },
+        { label: "Non-GST Invoice", value: "NON_GST" },
+        { label: "Non Taxable Invoice", value: "NON_TAXABLE" },
+        { label: "Invoice with Custom Tax", value: "CUSTOM_TAX" }
     ]
 
     const initialData: InvoiceData = {
         clientId: 0,
         invoiceType: "GST",
+        currency: "INR",
         invoiceId: "",
         invoiceDate: new Date(),
         clientGst: "",
+        tax_number: "",
         PONo: "",
         PODate: new Date(),
         reference: "",
@@ -125,10 +139,9 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
             cost: "",
         },]
 
-    const [open, setOpen] = useState(false)
+
     const [data, setData] = useState<InvoiceData>(initialData)
     const [items, setItems] = useState<InvoiceItem[]>(initialItems)
-    const [inputValues, setInputValues] = useState<Record<string, string>>({})
 
     const deleteItem = (id: string) => {
         setItems((prev) => prev.filter((item) => item.id !== id))
@@ -157,14 +170,29 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
     const companyState = companyData?.gst?.slice(0, 2);
     const clientState = data.clientGst?.slice(0, 2);
 
+    const hasGST = !!data.clientGst;
+
+    const isGST = data.invoiceType === "GST";
+    const isCustomTax = data.invoiceType === "CUSTOM_TAX";
+
+    const isTaxable = isGST || isCustomTax;
+
     const isIGST =
+        isGST &&
         companyState &&
         clientState &&
         companyState !== clientState;
 
-    const igstAmount = round(isIGST ? bill.totalTax : 0);
-    const cgstAmount = round(!isIGST ? bill.totalTax / 2 : 0);
-    const sgstAmount = round(!isIGST ? bill.totalTax / 2 : 0);
+    const igstAmount = data.invoiceType === "GST" ? round(isIGST ? bill.totalTax : 0) : 0;
+    const cgstAmount = data.invoiceType === "GST" ? round(!isIGST ? bill.totalTax / 2 : 0) : 0;
+    const sgstAmount = data.invoiceType === "GST" ? round(!isIGST ? bill.totalTax / 2 : 0) : 0;
+
+    const taxRate =
+        data.invoiceType === "GST"
+            ? 18
+            : data.invoiceType === "CUSTOM_TAX"
+                ? customTax
+                : 0;
 
     useEffect(() => {
 
@@ -173,7 +201,6 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
             0
         ));
 
-        const taxRate = 18;
         const totalTax = round((subTotal * taxRate) / 100);
 
         const grandTotal = subTotal + totalTax;
@@ -184,12 +211,20 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
             grandTotal,
         });
 
-    }, [items, data.clientGst]);
+    }, [items, data.clientGst, data.invoiceType, customTax]);
+
+    useEffect(() => {
+        if (!data.clientId) return;
+
+        if (!data.clientGst && data.invoiceType === "GST") {
+            setData(prev => ({ ...prev, invoiceType: "NON_GST" }));
+        }
+    }, [data.clientId])
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
 
-        const res = await insertInvoice(data, items, Boolean(isIGST));
+        const res = await insertInvoice(data, items, customTax);
 
         if (!res.success) {
             alert(res.message)
@@ -203,7 +238,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
 
     return (
         <div>
-            { user?.role !== "user" && <Button type="button" className="p-4" onClick={() => { setOpen(true) }}>
+            {user?.role !== "user" && <Button type="button" className="p-4" onClick={() => { setOpen(true) }}>
                 <Plus /> Generate Invoice
             </Button>}
 
@@ -253,9 +288,8 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                                 ...prev,
                                                 clientId: selected?.value || 0,
                                                 clientGst: client?.gst_number || "",
+                                                tax_number: client?.tax_number || "",
                                                 reference: client?.assigned_person || ""
-
-
                                             }))
                                         }}
                                         placeholder="Select Client..."
@@ -281,7 +315,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                         onChange={(selected) =>
                                             setData((prev) => ({
                                                 ...prev,
-                                                invoiceType: selected?.value || "GST",
+                                                invoiceType: selected?.value as InvoiceType || "GST",
                                             }))
                                         }
                                         placeholder="Select service..."
@@ -325,9 +359,9 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                 </Field>
 
                                 <Field>
-                                    <Label htmlFor="clientGst">Client GST</Label>
-                                    <Input id="clientGst" name="clientGst" placeholder="22AAAAA0000A1Z5" required disabled
-                                        value={data.clientGst}
+                                    <Label htmlFor="clientGst">{hasGST ? "Client GSTIN" : "Client Tax Number"}</Label>
+                                    <Input id="clientGst" name="clientGst" placeholder={hasGST ? "22AAAAA0000A1Z5" : "Tax Number"} required disabled
+                                        value={hasGST ? data.clientGst : data.tax_number}
                                         className="h-10"
                                     />
                                 </Field>
@@ -373,6 +407,40 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                 </Field>
                             </FieldGroup>
                             <div className="h-4"></div>
+
+                            <div className="grid grid-cols-4 py-2">
+                                <div>
+                                    <Label className="text-lg font-semibold">Billing Currency</Label>
+                                    <div className="flex items-center space-x-2">
+                                        <Label htmlFor="inr">INR(₹)</Label>
+                                        <Switch
+                                            id="invoice-currency"
+                                            checked={data.currency === "USD"}
+                                            onCheckedChange={(checked) => {
+                                                setCurrencySymbol(checked ? "$" : "₹");
+                                                setData((prev) => ({
+                                                    ...prev,
+                                                    currency: checked ? "USD" : "INR",
+                                                }));
+                                            }}
+                                        />
+                                        <Label htmlFor="dollar">Dollar($)</Label>
+                                    </div>
+                                </div>
+
+                                {data.invoiceType === "CUSTOM_TAX" &&
+                                    <div>
+                                        <Field>
+                                            <Label htmlFor="reference">Tax Rates(%)</Label>
+                                            <Input id="tax_rate" name="tax_rate" placeholder="Tax Rate" required
+                                                value={customTax}
+                                                className="h-10"
+                                                onChange={(e) => { setCustomTax(Number(e.target.value  || 0)) }}
+                                            />
+                                        </Field>
+                                    </div>
+                                }
+                            </div>
 
                             {items.map((item, index) => (
                                 <FieldGroup
@@ -510,7 +578,6 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                         />
                                     </Field>
 
-
                                     {/* Cost */}
                                     <Field>
                                         <Label>Cost</Label>
@@ -567,70 +634,112 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                 + Add More
                             </Button>
 
-                            <div className="mt-10">
-                                <h1 className="text-xl font-semibold">GST Details</h1>
+                            {isTaxable ?
 
-                                <div className="mt-4 space-y-3">
+                                <div className="mt-10">
+                                    <h1 className="text-xl font-semibold">GST Details</h1>
 
-                                    <div className="grid grid-cols-3 items-center border-b pb-2">
-                                        <span className="text-muted-foreground">IGST</span>
+                                    <div className="mt-4 space-y-3">
 
-                                        <span className="text-muted-foreground flex items-center justify-center">
-                                            <IndianRupee size={16} />
-                                            {formatCurrency(igstAmount)}
-                                        </span>
+                                        <div className="grid grid-cols-3 items-center border-b pb-2">
+                                            <span className="">Tax Type</span>
 
-                                        <span className="font-medium text-right">
-                                            {isIGST ? "18" : "0"}%
-                                        </span>
+                                            <span className="flex items-center justify-center">
+                                                 Amount ({currencySymbol})
+                                            </span>
+
+                                            <span className="font-medium text-right">
+                                                Rates (%)
+                                            </span>
+                                        </div>
+
+                                        {data.invoiceType === "CUSTOM_TAX" ?
+
+                                            <div>
+                                                <div className="grid grid-cols-3 items-center border-b pb-2">
+                                                    <span className="text-muted-foreground">Custom Tax</span>
+
+                                                    <span className="text-muted-foreground flex items-center justify-center">
+                                                        {currencySymbol}
+                                                        {formatCurrency(bill.totalTax)}
+                                                    </span>
+
+                                                    <span className="font-medium text-right">
+                                                        {customTax}%
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            : <>
+
+                                                <div className="grid grid-cols-3 items-center border-b pb-2">
+                                                    <span className="text-muted-foreground">IGST</span>
+
+                                                    <span className="text-muted-foreground flex items-center justify-center">
+                                                        {currencySymbol}
+                                                        {formatCurrency(igstAmount)}
+                                                    </span>
+
+                                                    <span className="font-medium text-right">
+                                                        {isTaxable ? (isIGST ? "18" : "0") : "0"}%
+                                                    </span>
+                                                </div>
+
+                                                <div className="grid grid-cols-3 items-center border-b pb-2">
+                                                    <span className="text-muted-foreground">CGST</span>
+
+                                                    <span className="text-muted-foreground flex items-center justify-center">
+                                                        {currencySymbol}
+                                                        {formatCurrency(cgstAmount)}
+                                                    </span>
+
+                                                    <span className="font-medium text-right">
+                                                        {isTaxable ? (!isIGST ? "9" : "0") : "0"}%
+                                                    </span>
+                                                </div>
+
+                                                <div className="grid grid-cols-3 items-center">
+                                                    <span className="text-muted-foreground">SGST</span>
+
+                                                    <span className="text-muted-foreground flex items-center justify-center">
+                                                        {currencySymbol}
+                                                        {formatCurrency(sgstAmount)}
+                                                    </span>
+
+                                                    <span className="font-medium text-right">
+                                                        {isTaxable ? (!isIGST ? "9" : "0") : "0"}%
+                                                    </span>
+                                                </div>
+                                            </>
+                                        }
+
                                     </div>
-
-                                    <div className="grid grid-cols-3 items-center border-b pb-2">
-                                        <span className="text-muted-foreground">CGST</span>
-
-                                        <span className="text-muted-foreground flex items-center justify-center">
-                                            <IndianRupee size={16} />
-                                            {formatCurrency(cgstAmount)}
-                                        </span>
-
-                                        <span className="font-medium text-right">
-                                            {isIGST ? "0" : "9"}%
-                                        </span>
-                                    </div>
-
-                                    <div className="grid grid-cols-3 items-center">
-                                        <span className="text-muted-foreground">SGST</span>
-
-                                        <span className="text-muted-foreground flex items-center justify-center">
-                                            <IndianRupee size={16} />
-                                            {formatCurrency(sgstAmount)}
-                                        </span>
-
-                                        <span className="font-medium text-right">
-                                            {isIGST ? "0" : "9"}%
-                                        </span>
-                                    </div>
-
                                 </div>
-                            </div>
-
+                                :
+                                <div className="mt-10">
+                                    <h1 className="text-xl font-semibold">Tax Not Applicable</h1>
+                                    <p className="text-sm text-muted-foreground">
+                                        This is a non-taxable supply. No GST applied.
+                                    </p>
+                                </div>
+                            }
                             <div className="mt-10">
                                 <h1 className="text-xl font-semibold">Billing Details</h1>
 
                                 <div className="mt-4 space-y-3">
                                     <div className="flex justify-between border-b pb-2">
                                         <span className="text-muted-foreground">Sub Total</span>
-                                        <span className="font-medium flex items-center"><IndianRupee size={16} />{formatCurrency(bill.subTotal)}</span>
+                                        <span className="font-medium flex items-center">{currencySymbol} {formatCurrency(bill.subTotal)}</span>
                                     </div>
 
                                     <div className="flex justify-between border-b pb-2">
                                         <span className="text-muted-foreground">Total Tax</span>
-                                        <span className="font-medium flex items-center"><IndianRupee size={16} />{formatCurrency(bill.totalTax)}</span>
+                                        <span className="font-medium flex items-center">{currencySymbol} {formatCurrency(bill.totalTax)}</span>
                                     </div>
 
                                     <div className="flex justify-between">
                                         <span className="text-primary">Grand Total</span>
-                                        <span className="font-medium flex items-center"><IndianRupee size={16} />{formatCurrency(bill.grandTotal)}</span>
+                                        <span className="font-medium flex items-center">{currencySymbol} {formatCurrency(bill.grandTotal)}</span>
                                     </div>
                                 </div>
                             </div>

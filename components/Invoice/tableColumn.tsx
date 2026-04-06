@@ -17,14 +17,22 @@ export const columns: ColumnDef<Invoice>[] = [
         header: "Client Name",
     },
     {
-        accessorKey: "client_gst_no",
-        header: "GST No",
-    },
+    id: "gst_or_tax",
+    header: "GST/TAX No",
+    accessorFn: (row) => row.client_gst_no || row.tax_number,
+    cell: ({ row }) => (
+      <p className="text-xs font-mono">
+        { row.original.client_gst_no && <span className="text-blue-700 font-semibold">{row.original.client_gst_no}</span> }
+        { row.original.tax_number && <span className="text-green-700 font-semibold">{row.original.tax_number}</span> }
+        { !row.original.client_gst_no && !row.original.tax_number && <span>-</span> }
+      </p>
+    ),
+  },
     {
         accessorKey: "sub_total",
         header: "Subtotal",
         cell: ({ row }) => (
-            <span>₹ {Number(row.getValue("sub_total")).toLocaleString()}</span>
+            <span>{row.original.currency === "INR" ? "₹" : "$"} {Number(row.getValue("sub_total")).toLocaleString()}</span>
         ),
     },
     {
@@ -42,7 +50,7 @@ export const columns: ColumnDef<Invoice>[] = [
 
             return (
                 <span className={`font-semibold ${color}`}>
-                    ₹ {amount.toLocaleString()}
+                    {row.original.currency === "INR" ? "₹" : "$"}  {amount.toLocaleString()}
                 </span>
             );
         },

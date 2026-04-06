@@ -84,7 +84,9 @@ const ViewInvoices = ({ id }: { id: number }) => {
                     <main className='px-6'>
 
                         <section>
-                            <h1 className='text-2xl font-bold'>{data?.client?.company_name} ({data?.client?.gst_number})</h1>
+                            <h1 className='text-2xl font-bold'>{data?.client?.company_name}
+                                ({data?.client?.gst_number ? <span className="text-blue-700">{data?.client?.gst_number}</span> : <span className="text-green-700">{data?.client?.tax_number}</span>})
+                            </h1>
                             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
 
                                 <div className='p-2 space-y-2'>

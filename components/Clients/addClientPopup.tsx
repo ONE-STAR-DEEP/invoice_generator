@@ -94,6 +94,7 @@ const AddClientPopup = () => {
     const [data, setData] = useState({
         companyName: "",
         gstNumber: "",
+        taxNumber: "",
         pan: "",
         address: "",
         city: "",
@@ -154,7 +155,7 @@ const AddClientPopup = () => {
                         </DialogHeader>
 
                         {/* Scrollable Body */}
-                        <div className="flex-1 overflow-y-auto px-6">
+                        <div className="flex-1 overflow-y-auto px-6 py-2">
 
                             <FieldLabel className="text-lg mt-4 text-primary">
                                 Company Details
@@ -199,7 +200,7 @@ const AddClientPopup = () => {
                                 </Field>
                                 <Field>
                                     <Label htmlFor="gstNumber">GST Number</Label>
-                                    <Input id="gstNumber" name="gstNumber" placeholder="22AAAAA0000A1Z5" required
+                                    <Input id="gstNumber" name="gstNumber" placeholder="22AAAAA0000A1Z5"
                                         className="h-10"
                                         value={data.gstNumber}
                                         type="text"
@@ -212,8 +213,22 @@ const AddClientPopup = () => {
                                     />
                                 </Field>
                                 <Field>
-                                    <Label htmlFor="pan">Pan card</Label>
-                                    <Input id="pan" name="pan" placeholder="ABCDE1234F" required
+                                    <Label htmlFor="taxNumber">Tax Number</Label>
+                                    <Input id="taxNumber" name="taxNumber" placeholder="000000000000"
+                                        className="h-10"
+                                        value={data.taxNumber}
+                                        type="text"
+                                        onChange={(e) =>
+                                            setData(prev => ({
+                                                ...prev,
+                                                taxNumber: e.target.value.toUpperCase()
+                                            }))
+                                        }
+                                    />
+                                </Field>
+                                <Field>
+                                    <Label htmlFor="pan">PAN Number</Label>
+                                    <Input id="pan" name="pan" placeholder="ABCDE1234F"
                                         className="h-10"
                                         value={data.pan}
                                         onChange={(e) =>
@@ -366,7 +381,7 @@ const AddClientPopup = () => {
                                 </Field>
                                 <Field>
                                     <Label htmlFor="notes">Notes</Label>
-                                    <Input id="notes" name="notes" placeholder="Notes" required
+                                    <Input id="notes" name="notes" placeholder="Notes"
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({

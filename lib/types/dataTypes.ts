@@ -9,6 +9,7 @@ export type User = {
 export type ClientInput = {
   companyName: string;
   gstNumber?: string;
+  taxNumber?: string;
   pan?: string;
   address?: string;
   city?: string;
@@ -28,6 +29,7 @@ export type ClientData = {
   company_name: string;
 
   gst_number: string | null;
+  tax_number: string | null;
   pan: string | null;
 
   address: string | null;
@@ -69,10 +71,12 @@ export type InvoiceItem = {
 
 export type InvoiceData = {
   clientId: number
-  invoiceType: "GST" | "NON_GST" | "EXPORT"
+  invoiceType: "GST" | "NON_GST" | "NON_TAXABLE" | "CUSTOM_TAX"
+  currency: "INR" | "USD"
   invoiceId: string
   invoiceDate: Date
   clientGst: string
+  tax_number: string
   PONo: string
   PODate: Date
   reference: string
@@ -119,6 +123,9 @@ export type Invoice = {
   client_country: string | null;
   client_pincode: string | null;
 
+  tax_number: string;
+
+  currency: string;
   sub_total: string;
   grand_total: string;
 
@@ -144,7 +151,14 @@ export type FetchedInvoice = {
   cgst: number;
   sgst: number;
   igst: number;
+  totalTax: number;
 
+  cgstRate: number;
+  sgstRate: number;
+  igstReate: number;
+  customRate: number;
+
+  currency: string;
   poNo: string;
   poDate: string;
   reference: string;
@@ -174,6 +188,7 @@ export type Client = {
 
   companyName: string;
   gstNumber: string;
+  taxNumber: string;
 
   email: string;
   phone: string;
@@ -222,7 +237,7 @@ export type PendingInvoice = {
   client_id: number;
   sub_total: string;
   grand_total: string;
-  created_at: string; 
+  created_at: string;
   status: "pending" | "paid";
   company_name: string;
   gst_number: string;
@@ -284,7 +299,8 @@ export type ClientLocationReport = {
 export type ClientFull = {
   id: number;
   company_name: string;
-  gst_number:string;
+  gst_number: string;
+  tax_number: string;
   pan: string
   assigned_person: string
   designation: string

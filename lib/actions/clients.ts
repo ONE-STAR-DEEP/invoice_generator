@@ -8,6 +8,7 @@ export const insertClient = async (data: ClientInput) => {
     const {
       companyName,
       gstNumber,
+      taxNumber,
       pan,
       address,
       city,
@@ -26,6 +27,7 @@ export const insertClient = async (data: ClientInput) => {
       INSERT INTO clients (
         company_name,
         gst_number,
+        tax_number,
         pan,
         address,
         city,
@@ -38,11 +40,12 @@ export const insertClient = async (data: ClientInput) => {
         designation,
         notes
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         companyName,
         gstNumber?.toUpperCase() || null,
+        taxNumber?.toUpperCase() || null,
         pan?.toUpperCase() || null,
         address || null,
         city || null,
@@ -85,11 +88,11 @@ export const fetchClients = async (
 
     const [rows]: any = await conn.execute(
       `
-  SELECT * FROM clients 
-  WHERE company_name LIKE ?
-  ORDER BY created_at DESC
-  LIMIT ${Number(limit)} OFFSET ${Number(offset)}
-  `,
+      SELECT * FROM clients 
+      WHERE company_name LIKE ?
+      ORDER BY created_at DESC
+      LIMIT ${Number(limit)} OFFSET ${Number(offset)}
+    `,
       [searchTerm]
     );
 
