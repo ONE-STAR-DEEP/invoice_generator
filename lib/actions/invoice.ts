@@ -209,6 +209,7 @@ export const insertInvoice = async (
         client_country,
         client_pincode,
         currency,
+        dollar_rate,
         sub_total,
         total_tax,
         igst,
@@ -236,12 +237,13 @@ export const insertInvoice = async (
         c.state,
         c.country,
         c.pincode,
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       FROM clients c
       WHERE c.id = ?
       `,
       [
         data.currency,
+        data.dollar_rate,
         subTotal,
         totalTax,
         totalIGST,
@@ -787,19 +789,22 @@ export const fetchClientReportByState = async (
   try {
     let query = `
       SELECT 
-        i.client_id,
-        i.client_name,
-        i.client_city,
-        i.client_state,
+  i.client_id,
+  i.client_name,
+  i.client_city,
+  i.client_state,
 
-        SUM(i.grand_total) AS total_amount,
-        COUNT(DISTINCT i.id) AS total_invoices,
-        COUNT(ii.id) AS total_items
+  SUM(i.grand_total) AS total_amount,
+  COUNT(*) AS total_invoices,
+  SUM(ii.item_count) AS total_items
 
-      FROM invoice i
+FROM invoice i
 
-      LEFT JOIN invoice_items ii 
-        ON ii.invoice_id = i.id
+LEFT JOIN (
+  SELECT invoice_id, COUNT(*) AS item_count
+  FROM invoice_items
+  GROUP BY invoice_id
+) ii ON ii.invoice_id = i.id
     `;
 
     const params: any[] = [];
@@ -819,6 +824,7 @@ export const fetchClientReportByState = async (
       ORDER BY total_amount DESC
       LIMIT ? OFFSET ?
     `;
+    
 
     params.push(pageSize, offset);
 

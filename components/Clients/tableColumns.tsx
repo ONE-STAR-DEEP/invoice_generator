@@ -31,8 +31,8 @@ export const columns: ColumnDef<ClientData>[] = [
     accessorFn: (row) => row.gst_number || row.tax_number,
     cell: ({ row }) => (
       <p className="text-xs font-mono">
-        { row.original.gst_number && <span className="text-blue-700">{row.original.gst_number}</span> }
-        { row.original.tax_number && <span className="text-green-700">{row.original.tax_number}</span> }
+        { row.original.gst_number && <span className="text-blue-700 font-semibold">{row.original.gst_number}</span> }
+        { row.original.tax_number && <span className="text-green-700 font-semibold">{row.original.tax_number}</span> }
         { !row.original.gst_number && !row.original.tax_number && <span>-</span> }
       </p>
     ),

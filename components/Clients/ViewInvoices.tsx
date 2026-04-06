@@ -92,21 +92,21 @@ const ViewInvoices = ({ id }: { id: number }) => {
                                 <div className='p-2 space-y-2'>
                                     <div className='flex items-center justify-between w-full border rounded-lg p-4'>
                                         <p className='text-md font-bold'>Total Amount</p>
-                                        <p className='text-2xl font-bold'>₹{data?.summary.total_amount}</p>
+                                        <p className='text-2xl font-bold'>₹ {data?.summary.total_amount}</p>
                                     </div>
 
                                     <div className='flex items-center justify-between w-full border rounded-lg p-4'>
                                         <p className='text-md font-bold'>
                                             Pending Amount
                                         </p>
-                                        <p className='text-xl font-bold text-orange-400'>{data?.summary?.pending_amount}</p>
+                                        <p className='text-xl font-bold text-orange-400'>₹ {data?.summary?.pending_amount}</p>
                                     </div>
 
                                     <div className='flex items-center justify-between w-full border rounded-lg p-4'>
                                         <p className='text-md font-bold'>
                                             Paid Amount
                                         </p>
-                                        <p className='text-xl font-bold text-emerald-500'>{data?.summary?.paid_amount}</p>
+                                        <p className='text-xl font-bold text-emerald-500'>₹ {data?.summary?.paid_amount}</p>
                                     </div>
 
                                     <div className='flex items-center justify-between w-full border rounded-lg p-4'>

@@ -144,27 +144,46 @@ export const fetchFullClientDetails = async (clientId: number) => {
         grand_total,
         status,
         reference,
+        currency,
         created_at
-      FROM invoice
-      WHERE client_id = ?
-      ORDER BY id DESC`,
+        FROM invoice
+        WHERE client_id = ?
+        ORDER BY id DESC`,
       [clientId]
     );
 
     const [summaryRows]: any = await conn.execute(
       `SELECT 
     COUNT(*) AS total_invoices,
-    COALESCE(SUM(grand_total), 0) AS total_amount,
 
-    COALESCE(SUM(CASE 
-      WHEN status = 'paid' THEN grand_total 
-      ELSE 0 
-    END), 0) AS paid_amount,
+    COALESCE(ROUND(SUM(
+      CASE 
+        WHEN currency = 'USD' THEN grand_total * dollar_rate
+        ELSE grand_total
+      END
+    ), 2), 0) AS total_amount,
 
-    COALESCE(SUM(CASE 
-      WHEN status = 'pending' THEN grand_total 
-      ELSE 0 
-    END), 0) AS pending_amount
+    COALESCE(ROUND(SUM(
+      CASE 
+        WHEN status = 'paid' THEN 
+          CASE 
+            WHEN currency = 'USD' THEN grand_total * dollar_rate
+            ELSE grand_total
+          END
+        ELSE 0 
+      END
+    ), 2), 0) AS paid_amount,
+
+    COALESCE(ROUND(SUM(
+      CASE 
+        WHEN status = 'pending' THEN 
+          CASE 
+            WHEN currency = 'USD' THEN grand_total * dollar_rate
+            ELSE grand_total
+          END
+        ELSE 0 
+      END
+    ), 2), 0) AS pending_amount
 
   FROM invoice
   WHERE client_id = ?`,

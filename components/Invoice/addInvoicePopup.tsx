@@ -120,6 +120,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
         clientId: 0,
         invoiceType: "GST",
         currency: "INR",
+        dollar_rate: 0,
         invoiceId: "",
         invoiceDate: new Date(),
         clientGst: "",
@@ -428,6 +429,24 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                     </div>
                                 </div>
 
+                                {data.currency === "USD" &&
+                                    <div>
+                                        <Field>
+                                            <Label htmlFor="reference">Dollar Rates ()</Label>
+                                            <Input id="tax_rate" name="tax_rate" placeholder="Tax Rate" required
+                                                value={data.dollar_rate}
+                                                className="h-10"
+                                                onChange={(e) => {
+                                                    setData(prev => ({
+                                                        ...prev,
+                                                        dollar_rate: Number(e.target.value)
+                                                    }))
+                                                }}
+                                            />
+                                        </Field>
+                                    </div>
+                                }
+
                                 {data.invoiceType === "CUSTOM_TAX" &&
                                     <div>
                                         <Field>
@@ -435,7 +454,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                             <Input id="tax_rate" name="tax_rate" placeholder="Tax Rate" required
                                                 value={customTax}
                                                 className="h-10"
-                                                onChange={(e) => { setCustomTax(Number(e.target.value  || 0)) }}
+                                                onChange={(e) => { setCustomTax(Number(e.target.value || 0)) }}
                                             />
                                         </Field>
                                     </div>
@@ -645,7 +664,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                             <span className="">Tax Type</span>
 
                                             <span className="flex items-center justify-center">
-                                                 Amount ({currencySymbol})
+                                                Amount ({currencySymbol})
                                             </span>
 
                                             <span className="font-medium text-right">

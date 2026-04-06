@@ -73,6 +73,7 @@ export type InvoiceData = {
   clientId: number
   invoiceType: "GST" | "NON_GST" | "NON_TAXABLE" | "CUSTOM_TAX"
   currency: "INR" | "USD"
+  dollar_rate: number
   invoiceId: string
   invoiceDate: Date
   clientGst: string

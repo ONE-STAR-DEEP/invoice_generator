@@ -16,7 +16,7 @@ export const columns: ColumnDef<Invoice>[] = [
         accessorKey: "sub_total",
         header: "Subtotal",
         cell: ({ row }) => (
-            <span>₹ {Number(row.getValue("sub_total")).toLocaleString()}</span>
+            <span>{row.original.currency === "INR" ? "₹" : "$"} {Number(row.getValue("sub_total")).toLocaleString()}</span>
         ),
     },
     {
@@ -34,7 +34,7 @@ export const columns: ColumnDef<Invoice>[] = [
 
             return (
                 <span className={`font-semibold ${color}`}>
-                    ₹ {amount.toLocaleString()}
+                    {row.original.currency === "INR" ? "₹" : "$"} {amount.toLocaleString()}
                 </span>
             );
         },
