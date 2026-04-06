@@ -468,14 +468,24 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                                 <div className="p-2 border-b border-r border-primary grid grid-cols-1 text-sm">
                                     <p className="font-bold">{companyData?.name}</p>
-                                    <p>{companyData?.address_line1}, <span className="text-nowrap">{companyData?.city}, {companyData?.state}-{companyData?.pincode}</span></p>
+                                    <p>
+                                        {[
+                                            companyData?.address_line1,
+                                            companyData?.city,
+                                            companyData?.state && companyData?.pincode
+                                                ? `${companyData.state}-${companyData.pincode}`
+                                                : companyData?.state || companyData?.pincode
+                                        ]
+                                            .filter(Boolean)
+                                            .join(", ") || "N/A"}
+                                    </p>
                                     <p>GSTIN: {companyData?.gst}</p>
                                 </div>
 
                                 <div className="b-border grid grid-cols-1 text-sm">
 
                                     <div className="grid grid-cols-2 b-border h-full m-0">
-                                        <span className="py-1 font-medium border-r border-primary pl-2 h-full">Invoice No <span className="font-bold">: {invoiceData?.invoiceId}</span></span>
+                                        <span className="py-1 font-medium border-r border-primary pl-2 h-full">Invoice<span className="font-bold">: {invoiceData?.invoiceId}</span></span>
                                         <span className="py-1 pl-2 h-full">Dated: {formatDateOnly(invoiceData?.createdAt)}</span>
                                     </div>
 
@@ -536,7 +546,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                                 <td className="border-r border-primary p-1">{i + 1}</td>
                                                 <td className="border-r border-primary px-3 text-left">{item.service}</td>
                                                 <td className="border-r border-primary p-1">{item.hsn}</td>
-                                                <td className="px-3 text-right">{formatCurrency(item.cost)}</td>
+                                                <td className="px-3">{formatCurrency(item.cost)}</td>
                                             </tr>
                                         ))}
 
@@ -548,11 +558,11 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                                 <td className=" p-1"></td>
                                             </tr>
                                         ))}
-                                        <tr className="text-right font-bold">
+                                        <tr className="font-bold">
                                             <td className="border-r border-primary p-1"></td>
                                             <td className="border-r border-primary p-1"></td>
                                             <td className="border-r border-t border-primary p-1">Total Amount ({invoiceData?.currency})</td>
-                                            <td className="p-1 pr-2 border-t border-primary">{formatCurrency(invoiceData?.subTotal)}</td>
+                                            <td className="p-1 pr-2 border-t border-primary text-center">{formatCurrency(invoiceData?.subTotal)}</td>
                                         </tr>
                                     </tbody>
 

@@ -241,7 +241,7 @@ const AddClientPopup = () => {
                                 </Field>
                                 <Field>
                                     <Label htmlFor="address">Address</Label>
-                                    <Input id="address" name="address" placeholder="Office Address"
+                                    <Input id="address" name="address" placeholder="Office Address" required
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
@@ -255,7 +255,8 @@ const AddClientPopup = () => {
                                 <Field>
                                     <Label>Country</Label>
                                     <Select
-                                    instanceId={"Country"}
+                                        required
+                                        instanceId={"Country"}
                                         options={countries}
                                         value={country}
                                         placeholder="Select Country"
@@ -283,7 +284,8 @@ const AddClientPopup = () => {
                                 <Field>
                                     <Label>State</Label>
                                     <Select
-                                    instanceId={"state"}
+                                        required
+                                        instanceId={"state"}
                                         options={states}
                                         value={state}
                                         placeholder="Select State"
@@ -311,7 +313,8 @@ const AddClientPopup = () => {
                                 <Field>
                                     <Label>City</Label>
                                     <Select
-                                    instanceId={"city"}
+                                        required
+                                        instanceId={"city"}
                                         options={cities}
                                         value={city}
                                         placeholder="Select City"

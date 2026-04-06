@@ -65,7 +65,7 @@ export type InvoiceItem = {
   service: string | null
   serviceId: number | null
   hsn: string
-  expiry: Date
+  expiry: Date | null
   cost: string
 }
 
@@ -79,7 +79,7 @@ export type InvoiceData = {
   clientGst: string
   tax_number: string
   PONo: string
-  PODate: Date
+  PODate: Date | null
   reference: string
 }
 

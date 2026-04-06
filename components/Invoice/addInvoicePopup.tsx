@@ -125,8 +125,8 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
         invoiceDate: new Date(),
         clientGst: "",
         tax_number: "",
-        PONo: "",
-        PODate: new Date(),
+        PONo: "N/A",
+        PODate: null,
         reference: "",
     }
 
@@ -136,7 +136,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
             service: null,
             serviceId: null,
             hsn: "",
-            expiry: new Date,
+            expiry: null,
             cost: "",
         },]
 
@@ -156,7 +156,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                 service: null,
                 serviceId: null,
                 hsn: "",
-                expiry: new Date,
+                expiry: null,
                 cost: "",
             },
         ])
@@ -382,7 +382,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                 <Field>
                                     <Label htmlFor="PODate">PO Date</Label>
                                     <Input id="PODate" name="PODate" placeholder="dd/mm/yyyy" required
-                                        value={formatDate(data.invoiceDate)}
+                                        value={data.PODate ? formatDate(data.invoiceDate) : ""}
                                         className="h-10"
                                         type="date"
                                         onChange={(e) =>
@@ -583,7 +583,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                         <Label>Expiry Date</Label>
                                         <Input
                                             type="date"
-                                            value={formatDate(item.expiry)}
+                                            value={item.expiry ? formatDate(item.expiry) : ""}
                                             className="h-10"
                                             onChange={(e) =>
                                                 setItems((prev) =>
@@ -644,7 +644,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                             cgst: null,
                                             sgst: null,
                                             hsn: "",
-                                            expiry: new Date,
+                                            expiry: null,
                                             cost: "",
                                         },
                                     ])
