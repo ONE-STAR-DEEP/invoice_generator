@@ -67,6 +67,7 @@ export type InvoiceItem = {
   hsn: string
   expiry: Date | null
   cost: string
+  naration: string
 }
 
 export type InvoiceData = {
@@ -75,11 +76,11 @@ export type InvoiceData = {
   currency: "INR" | "USD"
   dollar_rate: number
   invoiceId: string
-  invoiceDate: Date
+  invoiceDate: string | null
   clientGst: string
   tax_number: string
   PONo: string
-  PODate: Date | null
+  PODate: string | null
   reference: string
 }
 
@@ -173,6 +174,7 @@ export type FetchedInvoiceItem = {
   serviceId: number;
 
   service: string;
+  naration: string;
   hsn: string;
 
   cost: number;

@@ -153,3 +153,8 @@
   background: hsl(var(--muted-foreground));
 }
 
+.no-break {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid; /* older browsers */
+}

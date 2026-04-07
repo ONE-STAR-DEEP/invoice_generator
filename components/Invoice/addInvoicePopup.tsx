@@ -76,15 +76,15 @@ export const selectClassNames = {
     dropdownIndicator: () => "text-muted-foreground",
 }
 
-const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
+const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo }: {
     ClientList?: ClientData[];
     ServicesList?: Service[];
     companyData?: SellerCompany;
+    invoiceNo?: string;
 }) => {
 
     const router = useRouter();
     const [mounted, setMounted] = useState(false)
-
 
     const [currencySymbol, setCurrencySymbol] = useState<CurrencySymbol>("₹");
     const [open, setOpen] = useState(false)
@@ -121,8 +121,8 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
         invoiceType: "GST",
         currency: "INR",
         dollar_rate: 0,
-        invoiceId: "",
-        invoiceDate: new Date(),
+        invoiceId: invoiceNo || "",
+        invoiceDate: new Date().toISOString().split("T")[0],
         clientGst: "",
         tax_number: "",
         PONo: "N/A",
@@ -138,6 +138,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
             hsn: "",
             expiry: null,
             cost: "",
+            naration: ""
         },]
 
 
@@ -158,9 +159,17 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                 hsn: "",
                 expiry: null,
                 cost: "",
+                naration: ""
             },
         ])
     }
+
+    useEffect(() => {
+        setData(prev => ({
+            ...prev,
+            invoiceId: invoiceNo || ""
+        }))
+    }, [invoiceNo])
 
     const [bill, setBill] = useState({
         subTotal: 0,
@@ -224,6 +233,8 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
+
+        console.log(items)
 
         const res = await insertInvoice(data, items, customTax);
 
@@ -333,7 +344,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
 
                                 <Field>
                                     <Label htmlFor="InvoiceId">Invoice ID</Label>
-                                    <Input id="invoiceId" name="invoiceId" placeholder="Invoice ID" required
+                                    <Input id="invoiceId" name="invoiceId" placeholder="Invoice ID" disabled
                                         value={data.invoiceId}
                                         className="h-10 mb-0 pb-0"
                                         onChange={(e) =>
@@ -347,13 +358,13 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
 
                                 <Field>
                                     <Label htmlFor="invoiceDate">Invoice Date</Label>
-                                    <Input id="invoiceDate" name="invoiceDate" placeholder="dd/mm/yyyy" type="date" required
-                                        value={formatDate(data.invoiceDate)}
+                                    <Input id="invoiceDate" name="invoiceDate" type="date" required
+                                        value={data.invoiceDate || ""}
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
                                                 ...prev,
-                                                invoiceDate: new Date(e.target.value)
+                                                invoiceDate: e.target.value
                                             }))
                                         }
                                     />
@@ -381,14 +392,13 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                 </Field>
                                 <Field>
                                     <Label htmlFor="PODate">PO Date</Label>
-                                    <Input id="PODate" name="PODate" placeholder="dd/mm/yyyy" required
-                                        value={data.PODate ? formatDate(data.invoiceDate) : ""}
-                                        className="h-10"
+                                    <Input
                                         type="date"
+                                        value={data.PODate || ""}
                                         onChange={(e) =>
                                             setData(prev => ({
                                                 ...prev,
-                                                PODate: new Date(e.target.value)
+                                                PODate: e.target.value
                                             }))
                                         }
                                     />
@@ -626,6 +636,25 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                             <Trash className="text-red-700 m-2 group-hover:text-primary" />
                                         </button>
                                     </Field>
+
+                                    <Field className="col-span-3">
+                                        <Label>Naration</Label>
+                                        <Input
+                                            value={item.naration}
+                                            placeholder="Naration about the service"
+                                            className="h-10"
+                                            onChange={(e) =>
+                                                setItems((prev) =>
+                                                    prev.map((it) =>
+                                                        it.id === item.id
+                                                            ? { ...it, naration: e.target.value }
+                                                            : it
+                                                    )
+                                                )
+                                            }
+                                        />
+                                    </Field>
+
                                 </FieldGroup>
                             ))}
 
@@ -646,6 +675,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData }: {
                                             hsn: "",
                                             expiry: null,
                                             cost: "",
+                                            naration: ""
                                         },
                                     ])
                                 }

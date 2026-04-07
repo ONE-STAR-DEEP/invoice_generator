@@ -5,8 +5,9 @@ import { columns } from '@/components/Invoice/tableColumn';
 import Pagination from '@/components/paginationComponent';
 import SearchComponent from '@/components/SearchComponent'
 import { fetchClients } from '@/lib/actions/clients';
-import { fetchAllInvoices, fetchServices } from '@/lib/actions/invoice';
+import { fetchAllInvoices, fetchServices, getNewInvoiceNo } from '@/lib/actions/invoice';
 import { fetchCompanyData } from '@/lib/actions/users';
+import { invoiceString } from '@/lib/currentInvoiceNo';
 
 type PageProps = {
     searchParams: Promise<{
@@ -30,10 +31,10 @@ const InvoicePage = async ({ searchParams }: PageProps) => {
     const clientData = await fetchClients();
     const servicesData = await fetchServices();
     const companyData = await fetchCompanyData();
+    
+    const invoiceNo = await invoiceString();
 
     const allInvoices = await fetchAllInvoices(page, limit, search, status);
-
-    console.log(allInvoices)
 
     return (
         <div className="flex flex-col flex-1 space-y-6 min-h-0">
@@ -44,6 +45,7 @@ const InvoicePage = async ({ searchParams }: PageProps) => {
                     ClientList={clientData?.data || []}
                     ServicesList={servicesData?.data || []}
                     companyData={companyData?.data || undefined}
+                    invoiceNo={invoiceNo}
                 />
             </section>
 

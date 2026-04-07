@@ -149,7 +149,6 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                 fetchBankAccountData()
             ]);
             if (invoiceRes.data && companyRes.data && accountRes.data) {
-                console.log(invoiceRes.data.invoice)
                 setCurrencySymbol(invoiceRes.data.invoice.currency === "INR" ? "₹" : "$")
                 setInvoiceData(invoiceRes.data.invoice);
                 setCompanyData(companyRes.data);
@@ -162,7 +161,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
         fetchData();
     }, [open, id])
 
-    const minRows = 25;
+    const minRows = 20;
     const emptyRows = invoiceData ? Math.max(0, minRows - invoiceData.items.length) : 0;
 
     const handlePrint = () => {
@@ -186,7 +185,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
         printWindow.document.write(`
     <html>
       <head>
-        <title>Invoice</title>
+        <title>${invoiceData?.invoiceId}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -484,14 +483,14 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                                 <div className="b-border grid grid-cols-1 text-sm">
 
-                                    <div className="grid grid-cols-[60%_40%] b-border h-full m-0">
-                                        <span className="py-1 font-medium border-r border-primary pl-1 h-full">Invoice<span className="font-bold">: {invoiceData?.invoiceId}</span></span>
-                                        <span className="py-1 pl-1 h-full">Dated: {formatDateOnly(invoiceData?.createdAt)}</span>
+                                    <div className="grid grid-cols-[55%_45%] b-border h-full m-0">
+                                        <span className="py-1 font-medium border-r border-primary pl-2 h-full">Invoice<span className="text-xs font-bold">: {invoiceData?.invoiceId}</span></span>
+                                        <span className="py-1 pl-1 h-full">Dated: <span className="text-xs">{formatDateOnly(invoiceData?.createdAt)}</span></span>
                                     </div>
 
-                                    <div className="grid grid-cols-2 b-border">
+                                    <div className="grid grid-cols-[55%_45%] b-border">
                                         <span className="py-1 font-medium border-r border-primary pl-2 h-full">PO No<span>: {invoiceData?.poNo}</span></span>
-                                        <span className="py-1 pl-2 h-full">PO Date: {formatDateOnly(invoiceData?.poDate)}</span>
+                                        <span className="py-1 pl-1 h-full">PO Date: <span className="text-xs">{invoiceData?.poDate ? formatDateOnly(invoiceData?.poDate) : "N/A"}</span></span>
                                     </div>
 
                                     <p className="font-medium pl-2">Reference: {invoiceData?.reference}</p>
@@ -535,8 +534,8 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                         <tr>
                                             <th className="border-r border-primary p-2 w-16">S No</th>
                                             <th className="border-r border-primary p-2 text-left">Description of Services</th>
-                                            <th className="border-r border-primary p-2  w-36">HSN/SAC Code</th>
-                                            <th className="p-2 w-36">Amount</th>
+                                            <th className="border-r border-primary p-2  w-30">HSN/SAC Code</th>
+                                            <th className="p-2 w-30">Amount</th>
                                         </tr>
                                     </thead>
 
@@ -544,7 +543,12 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                         {invoiceData?.items.map((item, i) => (
                                             <tr key={i} className="text-center print:break-inside-avoid">
                                                 <td className="border-r border-primary p-1">{i + 1}</td>
-                                                <td className="border-r border-primary px-3 text-left">{item.service}</td>
+                                                <td className="border-r border-primary px-3 text-left">
+                                                    <div className="flex flex-col">
+                                                        <span className=" text-xs font-bold">{item.service}</span>
+                                                        <span className="pl-1 text-xs font-light line-clamp-3 wrap-break-word">{item.naration}</span>
+                                                    </div>
+                                                </td>
                                                 <td className="border-r border-primary p-1">{item.hsn}</td>
                                                 <td className="px-3">{formatCurrency(item.cost)}</td>
                                             </tr>
@@ -553,16 +557,19 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                         {Array.from({ length: Math.max(0, emptyRows) }).map((_, i) => (
                                             <tr key={`empty-${i}`} className="text-center">
                                                 <td className="border-r border-primary p-1">&nbsp;</td>
-                                                <td className="border-r border-primary p-1"></td>
+                                                <td className="border-r border-primary p-1">
+                                                    <p className="text-base font-bold"></p>
+                                                    <p className="pl-1 text-xs font-light"></p>
+                                                </td>
                                                 <td className="border-r border-primary p-1"></td>
                                                 <td className=" p-1"></td>
                                             </tr>
                                         ))}
-                                        <tr className="font-bold">
+                                        <tr className="font-bold  text-center">
                                             <td className="border-r border-primary p-1"></td>
                                             <td className="border-r border-primary p-1"></td>
                                             <td className="border-r border-t border-primary p-1">Total Amount ({invoiceData?.currency})</td>
-                                            <td className="p-1 pr-2 border-t border-primary text-center">{formatCurrency(invoiceData?.subTotal)}</td>
+                                            <td className="p-1 pr-2 border-t border-primary">{formatCurrency(invoiceData?.subTotal)}</td>
                                         </tr>
                                     </tbody>
 

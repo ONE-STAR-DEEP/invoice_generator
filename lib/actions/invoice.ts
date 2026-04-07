@@ -1,6 +1,7 @@
 "use server"
 
 import { GST } from "../config/gst";
+import { invoiceString } from "../currentInvoiceNo";
 import db from "../dbPool";
 import { getCurrentUserSafe } from "../sessionCheck";
 import { ClientLocationReport, InvoiceApiResponse, InvoiceData, InvoiceItem, InvoiceServiceRow, Service } from "../types/dataTypes";
@@ -23,9 +24,26 @@ export interface ClientReport extends RowDataPacket {
   pending_invoices: number;
 }
 
-type GroupedInvoices = {
-  paid: any[];
-  pending: any[];
+const getFinancialYear = () => {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1; // 1–12
+
+  let startYear;
+  let endYear;
+
+  if (month >= 4) {
+    // April or later
+    startYear = year;
+    endYear = year + 1;
+  } else {
+    // Jan–March
+    startYear = year - 1;
+    endYear = year;
+  }
+
+  return `${String(startYear).slice(-2)}-${String(endYear).slice(-2)}`;
 };
 
 const allowedRoles = ["admin", "accounts"];
@@ -56,6 +74,35 @@ export const fetchServices = async () => {
   }
 }
 
+export const getNewInvoiceNo = async () => {
+
+  const conn = await db.getConnection()
+  try {
+    const [rows]: any = await conn.execute(`
+      SELECT name, invoice_no FROM sequence LIMIT 1
+    `)
+
+    const currentNo = rows[0].invoice_no;
+
+    if (!currentNo) {
+      return {
+        success: false,
+        message: "Failed to Fetch Current invoice No"
+      }
+    }
+
+    return {
+      success: true,
+      invoiceNo: currentNo,
+    }
+  }
+  catch (error) {
+    console.log(error)
+  } finally {
+    conn.release();
+  }
+}
+
 export const insertInvoice = async (
   data: InvoiceData,
   items: InvoiceItem[],
@@ -82,15 +129,32 @@ export const insertInvoice = async (
 
     await conn.beginTransaction();
 
+    const [rows]: any = await conn.execute(`
+      SELECT invoice_no FROM sequence LIMIT 1 FOR UPDATE
+    `);
+
+    const currentNo = rows[0]?.invoice_no;
+
+    if (!currentNo && currentNo !== 0) {
+      throw new Error("Invalid invoice number");
+    }
+
+    const paddedNo = String(currentNo).padStart(4, "0");
+
+    const invoiceString = `TTPL/${getFinancialYear()}/${paddedNo}`;
+
+    const nextNo = currentNo + 1;
+
+    await conn.execute(`
+      UPDATE sequence SET invoice_no = ? WHERE name = 'invoice'
+    `, [nextNo]);
+
     const isGST = data.invoiceType === "GST";
     const isCustomTax = data.invoiceType === "CUSTOM_TAX";
-
-    const isTaxable = isGST || isCustomTax;
 
     let isIGST = false;
 
     if (isGST) {
-
       const [company]: any = await conn.execute(
         `SELECT gst FROM companies LIMIT 1`
       )
@@ -181,6 +245,7 @@ export const insertInvoice = async (
         itemCGST,
         itemSGST,
         item.expiry,
+        item.naration
       ]);
     }
 
@@ -250,14 +315,14 @@ export const insertInvoice = async (
         totalCGST,
         totalSGST,
         (isIGST && !isCustomTax && isINR) ? GST.IGST : 0,
-        (!isIGST && !isCustomTax && isINR) ? GST.CGST : 0,
-        (!isIGST && !isCustomTax && isINR) ? GST.SGST : 0,
+        (isGST && !isCustomTax && isINR) ? GST.CGST : 0,
+        (isGST && !isCustomTax && isINR) ? GST.SGST : 0,
         (isCustomTax) ? custom_tax : 0,
         grandTotal,
         data.PONo,
         data.PODate,
         data.reference,
-        data.invoiceId,
+        invoiceString,
         data.clientId, // IMPORTANT: goes at end
       ]
     );
@@ -269,6 +334,8 @@ export const insertInvoice = async (
       ...row,
     ]);
 
+    console.log(finalValues)
+
     await conn.query(
       `
       INSERT INTO invoice_items (
@@ -278,7 +345,8 @@ export const insertInvoice = async (
         igst,
         cgst,
         sgst,
-        expiry
+        expiry,
+        naration
       ) VALUES ?
       `,
       [finalValues]
@@ -601,6 +669,7 @@ export const fetchInvoiceById = async (invoiceId: number) => {
           'id', ii.id,
           'serviceId', s.id,
           'service', s.name,
+          'naration', ii.naration,
           'hsn', s.hsn_code,
           'cost', ii.cost,
           'igst', ii.igst,

@@ -10,6 +10,7 @@ import SearchComponent from "@/components/SearchComponent"
 import FinancialYearSelect from "@/components/Dashboard/FinancialYearSelector"
 import { fetchClients } from "@/lib/actions/clients"
 import { fetchCompanyData } from "@/lib/actions/users"
+import { invoiceString } from "@/lib/currentInvoiceNo"
 
 const today = new Date().toLocaleDateString("en-IN", {
   weekday: "long",
@@ -59,6 +60,8 @@ export default async function Dashboard({
     serviceLimit
   )
 
+  const invoiceNo = await invoiceString();
+
   return (
     <div className="flex flex-col gap-6 p-6">
 
@@ -79,6 +82,7 @@ export default async function Dashboard({
           ClientList={clientData?.data || []}
           ServicesList={servicesData?.data || []}
           companyData={companyData?.data || undefined}
+          invoiceNo={invoiceNo}
         />
 
       </div>

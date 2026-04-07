@@ -9,7 +9,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 
-
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,6 +28,23 @@ type Option = {
     value: string;
 };
 
+type ClientData = {
+    companyName: string;
+    gstNumber: string;
+    taxNumber: string;
+    pan: string;
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    pincode: string;
+    email: string;
+    phone: string;
+    assignedPerson: string;
+    designation: string;
+    notes: string;
+};
+
 const AddClientPopup = () => {
 
     const [country, setCountry] = useState<Option | null>(null);
@@ -38,6 +54,23 @@ const AddClientPopup = () => {
     const [countries, setCountries] = useState<Option[]>([]);
     const [states, setStates] = useState<Option[]>([]);
     const [cities, setCities] = useState<Option[]>([]);
+
+    type TaxKey = "gstNumber" | "taxNumber";
+
+    const [taxType, setTaxType] = useState({
+        value: "gstNumber" as TaxKey,
+        label: "GSTIN"
+    })
+
+    type TaxOption = {
+        value: TaxKey;
+        label: string;
+    };
+
+    const taxOption: TaxOption[] = [
+        { value: "gstNumber", label: "GSTIN" },
+        { value: "taxNumber", label: "TAX Number" }
+    ]
 
     useEffect(() => {
         const allCountries = Country.getAllCountries().map((c) => ({
@@ -81,7 +114,6 @@ const AddClientPopup = () => {
         setCity(null);
     }, [state, country]);
 
-
     const router = useRouter();
     const user = useAuth()
 
@@ -91,7 +123,7 @@ const AddClientPopup = () => {
         setMounted(true)
     }, [])
 
-    const [data, setData] = useState({
+    const initialClientData: ClientData = {
         companyName: "",
         gstNumber: "",
         taxNumber: "",
@@ -106,10 +138,18 @@ const AddClientPopup = () => {
         assignedPerson: "",
         designation: "",
         notes: "",
-    })
+    };
+
+    const [data, setData] = useState<ClientData>(initialClientData);
 
     const [open, setOpen] = useState(false)
 
+    useEffect(() => {
+        if (open) {
+            setData({ ...initialClientData });
+            setTaxType
+        }
+    }, [open]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
@@ -123,7 +163,6 @@ const AddClientPopup = () => {
 
         setOpen(false);
         router.refresh();
-
     }
 
     return (
@@ -199,34 +238,6 @@ const AddClientPopup = () => {
                                     />
                                 </Field>
                                 <Field>
-                                    <Label htmlFor="gstNumber">GST Number</Label>
-                                    <Input id="gstNumber" name="gstNumber" placeholder="22AAAAA0000A1Z5"
-                                        className="h-10"
-                                        value={data.gstNumber}
-                                        type="text"
-                                        onChange={(e) =>
-                                            setData(prev => ({
-                                                ...prev,
-                                                gstNumber: e.target.value.toUpperCase()
-                                            }))
-                                        }
-                                    />
-                                </Field>
-                                <Field>
-                                    <Label htmlFor="taxNumber">Tax Number</Label>
-                                    <Input id="taxNumber" name="taxNumber" placeholder="000000000000"
-                                        className="h-10"
-                                        value={data.taxNumber}
-                                        type="text"
-                                        onChange={(e) =>
-                                            setData(prev => ({
-                                                ...prev,
-                                                taxNumber: e.target.value.toUpperCase()
-                                            }))
-                                        }
-                                    />
-                                </Field>
-                                <Field>
                                     <Label htmlFor="pan">PAN Number</Label>
                                     <Input id="pan" name="pan" placeholder="ABCDE1234F"
                                         className="h-10"
@@ -235,6 +246,52 @@ const AddClientPopup = () => {
                                             setData(prev => ({
                                                 ...prev,
                                                 pan: e.target.value.toUpperCase()
+                                            }))
+                                        }
+                                    />
+                                </Field>
+
+                                <Field>
+                                    <Label htmlFor="phone">Tax Identification Type</Label>
+                                    <Select<TaxOption>
+                                        required
+                                        instanceId={"tax-id"}
+                                        options={taxOption}
+                                        defaultValue={{ value: "gstNumber", label: "GSTIN" }}
+                                        placeholder="Select tax ID type"
+                                        onChange={(val) => {
+                                            if (!val) return;
+
+                                            setData(prev => ({
+                                                ...prev,
+                                                taxNumber: "",
+                                                gstNumber: ""
+                                            }));
+
+                                            setTaxType({
+                                                value: val.value,
+                                                label: val.label
+                                            });
+                                        }}
+                                        menuPortalTarget={mounted ? document.body : undefined}
+                                        menuPosition="fixed"
+                                        menuShouldBlockScroll={false}
+                                        unstyled
+                                        styles={selectStyles}
+                                        classNames={selectClassNames}
+                                    />
+                                </Field>
+
+                                <Field>
+                                    <Label htmlFor={taxType.value}>{taxType.label}</Label>
+                                    <Input id={taxType.value} name={taxType.value} placeholder={taxType.label}
+                                        className="h-10"
+                                        value={data[taxType.value as TaxKey]}
+                                        type="text"
+                                        onChange={(e) =>
+                                            setData(prev => ({
+                                                ...prev,
+                                                [taxType.value as TaxKey]: e.target.value.toUpperCase()
                                             }))
                                         }
                                     />
