@@ -41,7 +41,6 @@ const Filter = () => {
           <SelectItem value="all">All Invoice</SelectItem>
           <SelectItem value="paid">Paid Invoice</SelectItem>
           <SelectItem value="pending">Pending Invoice</SelectItem>
-          <SelectItem value="cancelled">Cancelled Invoice</SelectItem>
         </SelectGroup>
       </SelectContent>
     </Select>

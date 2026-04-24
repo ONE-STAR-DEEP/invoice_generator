@@ -3,6 +3,7 @@ import AddInvoicePopup from '@/components/Invoice/addInvoicePopup'
 import DownloadInvoice from '@/components/Invoice/downloadInvoice';
 import Filter from '@/components/Invoice/Filter';
 import { columns } from '@/components/Invoice/tableColumn';
+import AddItemPopup from '@/components/item/addItemPopup';
 import Pagination from '@/components/paginationComponent';
 import SearchComponent from '@/components/SearchComponent'
 import { fetchClients } from '@/lib/actions/clients';
@@ -29,12 +30,6 @@ const InvoicePage = async ({ searchParams }: PageProps) => {
 
     const status = params?.status
 
-    const clientData = await fetchClients();
-    const servicesData = await fetchServices();
-    const companyData = await fetchCompanyData();
-
-    const invoiceNo = await invoiceString();
-
     const allInvoices = await fetchAllInvoices(page, limit, search, status);
 
 
@@ -42,15 +37,10 @@ const InvoicePage = async ({ searchParams }: PageProps) => {
         <div className="flex flex-col flex-1 space-y-6 min-h-0">
 
             <section className="flex items-center justify-between border px-8 py-4 rounded-2xl bg-muted/50">
-                <h1 className="font-semibold text-lg">Invoice</h1>
+                <h1 className="font-semibold text-lg">Input Tax Credit</h1>
 
                 <div className='flex gap-2 items-center'>
-                    <DownloadInvoice />
-                    <AddInvoicePopup
-                        ClientList={clientData?.data || []}
-                        ServicesList={servicesData?.data || []}
-                        companyData={companyData?.data || undefined}
-                        invoiceNo={invoiceNo}
+                    <AddItemPopup
                         mode='new'
                     />
                 </div>

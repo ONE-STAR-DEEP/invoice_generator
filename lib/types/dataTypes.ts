@@ -21,6 +21,24 @@ export type ClientInput = {
   assignedPerson?: string;
   designation?: string;
   notes?: string;
+  tds?: string;
+};
+
+export type ClientFormData = {
+    companyName: string;
+    gstNumber: string;
+    taxNumber: string;
+    pan: string;
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    pincode: string;
+    email: string;
+    phone: string;
+    assignedPerson: string;
+    designation: string;
+    notes: string;
 };
 
 export type ClientData = {
@@ -62,7 +80,7 @@ export type ServiceOptions = {
 
 export type InvoiceItem = {
   id: string
-  service: string | null
+  service:  { label: string; value: string }  | null
   serviceId: number | null
   hsn: string
   expiry: Date | null
@@ -148,7 +166,7 @@ export type FetchedInvoice = {
 
   subTotal: number;
   grandTotal: number;
-  status: "paid" | "pending"
+  status: "paid" | "pending" | "cancelled"
 
   cgst: number;
   sgst: number;
@@ -160,13 +178,17 @@ export type FetchedInvoice = {
   igstReate: number;
   customRate: number;
 
-  currency: string;
+  currency: "INR" | "USD";
   poNo: string;
   poDate: string;
   reference: string;
 
   items: FetchedInvoiceItem[];
   client: Client;
+  type: InvoiceType;
+  invoiceDate: string;
+
+  dollar_rate: number;
 };
 
 export type FetchedInvoiceItem = {
@@ -338,4 +360,66 @@ export type FullClientDetails = {
   client: ClientFull | null;
   invoices: Invoice[];
   summary: ClientSummary;
+};
+
+export type InvoiceType = "GST" | "NON_GST" | "NON_TAXABLE" | "CUSTOM_TAX"
+
+export type PurchaseAdjustment = {
+  bill_date?: string | null;
+  bill_no?: string;
+
+  supplier_name?: string;
+  supplier_gstin: string;
+
+  item_name: string;
+  hsn_code?: string;
+
+  quantity?: number;
+  rate?: number;
+  taxable_value?: number;
+
+  cgst?: number;
+  sgst?: number;
+  igst?: number;
+
+  cgst_amount?: number;
+  sgst_amount?: number;
+  igst_amount?: number;
+
+  total_amount: number | null;
+
+  place_of_supply?: string;
+  itc_eligibility?: "eligible" | "blocked" | "partial";
+};
+
+export type FetchedAdjustment = {
+  id: number;
+
+  bill_date: string;
+  bill_no: string;
+
+  supplier_name: string;
+  supplier_gstin: string;
+
+  item_name: string;
+  hsn_code: string;
+
+  quantity: number;
+  rate: number;
+  taxable_value: number;
+
+  cgst: number;
+  sgst: number;
+  igst: number;
+
+  cgst_amount: number;
+  sgst_amount: number;
+  igst_amount: number;
+
+  total_amount: number;
+
+  place_of_supply: string;
+  itc_eligibility: "eligible" | "blocked" | "partial";
+
+  created_at: string;
 };

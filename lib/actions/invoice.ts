@@ -1,7 +1,6 @@
 "use server"
 
 import { GST } from "../config/gst";
-import { invoiceString } from "../currentInvoiceNo";
 import db from "../dbPool";
 import { getCurrentUserSafe } from "../sessionCheck";
 import { ClientLocationReport, InvoiceApiResponse, InvoiceData, InvoiceItem, InvoiceServiceRow, Service } from "../types/dataTypes";
@@ -288,7 +287,9 @@ export const insertInvoice = async (
         pono,
         podate,
         reference,
-        invoice_id
+        invoice_id,
+        type,
+        invoice_date
       )
       SELECT 
         c.id,
@@ -302,7 +303,7 @@ export const insertInvoice = async (
         c.state,
         c.country,
         c.pincode,
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?
       FROM clients c
       WHERE c.id = ?
       `,
@@ -323,6 +324,8 @@ export const insertInvoice = async (
         data.PODate,
         data.reference,
         invoiceString,
+        data.invoiceType,
+        data.invoiceDate,
         data.clientId, // IMPORTANT: goes at end
       ]
     );
@@ -366,6 +369,245 @@ export const insertInvoice = async (
     return {
       success: false,
       message: "Insert Failed",
+    };
+  } finally {
+    conn.release();
+  }
+};
+
+export const updateInvoice = async (
+  invoiceId: number,
+  data: InvoiceData,
+  items: InvoiceItem[],
+  custom_tax: number
+) => {
+  const conn = await db.getConnection();
+
+  try {
+    const session = await getCurrentUserSafe();
+    const userId = session?.id;
+
+    if (!userId || session.iss !== "thaverTechInvoiceGenerator") {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!allowedRoles.includes(session.role)) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!items.length) {
+      throw new Error("No invoice items provided");
+    }
+
+    await conn.beginTransaction();
+
+    // GST logic 
+    const isGST = data.invoiceType === "GST";
+    const isCustomTax = data.invoiceType === "CUSTOM_TAX";
+
+    let isIGST = false;
+
+    if (isGST) {
+      const [company]: any = await conn.execute(
+        `SELECT gst FROM companies LIMIT 1`
+      );
+
+      const companyGST = company[0].gst;
+
+      const [clientRows]: any = await conn.execute(
+        `SELECT gst_number FROM clients WHERE id = ?`,
+        [data.clientId]
+      );
+
+      const clientGST = clientRows[0]?.gst_number;
+
+      if (!clientGST) {
+        throw new Error("GST required for taxable invoice");
+      }
+
+      const companyState = companyGST.slice(0, 2);
+      const clientState = clientGST.slice(0, 2);
+
+      isIGST = companyState !== clientState;
+    }
+
+    const [taxes]: any = await conn.execute(
+      `SELECT cgst_rate, sgst_rate, igst_rate, custom_rate FROM invoice WHERE id = ?`,
+      [invoiceId]
+    );
+
+    let CGST_RATE = Number(taxes[0].cgst_rate);
+    let SGST_RATE = Number(taxes[0].sgst_rate);
+    let IGST_RATE = Number(taxes[0].igst_rate);
+
+    if (CGST_RATE === 0 && SGST_RATE === 0 && IGST_RATE === 0) {
+      if (isIGST) {
+        IGST_RATE = GST.IGST
+      }
+      else {
+        CGST_RATE = GST.CGST
+        SGST_RATE = GST.SGST
+      }
+    }
+
+    custom_tax = custom_tax ?? taxes[0].custom_rate;
+
+    let subTotal = 0;
+    let totalIGST = 0, totalCGST = 0, totalSGST = 0;
+
+    const invoiceItemsValues: any[] = [];
+
+    for (const item of items) {
+      let serviceId = item.serviceId;
+
+      // 🔹 resolve service
+      if (!serviceId && item.service) {
+        const [rows]: any = await conn.execute(
+          `SELECT id FROM services WHERE hsn_code = ? AND name = ? LIMIT 1`,
+          [item.hsn, item.service]
+        );
+
+        if (rows.length > 0) {
+          serviceId = rows[0].id;
+        } else {
+          const [result]: any = await conn.execute(
+            `INSERT INTO services (name, hsn_code) VALUES (?, ?)`,
+            [item.service, item.hsn]
+          );
+          serviceId = result.insertId;
+        }
+      }
+
+      if (!serviceId) {
+        throw new Error("Service ID missing");
+      }
+
+      const cost = Number(item.cost);
+      if (isNaN(cost)) {
+        throw new Error("Invalid item cost");
+      }
+
+      let itemIGST = 0, itemCGST = 0, itemSGST = 0;
+
+      subTotal += cost;
+
+      if (isGST) {
+        if (isIGST) {
+          itemIGST = round((cost * IGST_RATE) / 100);
+        } else {
+          itemCGST = round((cost * CGST_RATE) / 100);
+          itemSGST = round((cost * SGST_RATE) / 100);
+        }
+        totalIGST += itemIGST;
+        totalCGST += itemCGST;
+        totalSGST += itemSGST;
+      }
+
+      invoiceItemsValues.push([
+        serviceId,
+        cost,
+        itemIGST,
+        itemCGST,
+        itemSGST,
+        item.expiry,
+        item.naration
+      ]);
+    }
+
+    const totalTax = round(
+      isCustomTax
+        ? (subTotal * custom_tax) / 100
+        : (totalIGST + totalCGST + totalSGST)
+    );
+
+    const grandTotal = round(subTotal + totalTax);
+
+    const isINR = data.currency === "INR";
+
+    await conn.execute(
+      `
+      UPDATE invoice SET
+        currency = ?,
+        dollar_rate = ?,
+        sub_total = ?,
+        total_tax = ?,
+        igst = ?,
+        cgst = ?,
+        sgst = ?,
+        igst_rate = ?,
+        cgst_rate = ?,
+        sgst_rate = ?,
+        custom_rate = ?,
+        grand_total = ?,
+        pono = ?,
+        podate = ?,
+        reference = ?,
+        type = ?,
+        invoice_date = ?
+      WHERE id = ?
+      `,
+      [
+        data.currency,
+        data.dollar_rate,
+        subTotal,
+        totalTax,
+        totalIGST,
+        totalCGST,
+        totalSGST,
+        (isIGST && !isCustomTax && isINR) ? IGST_RATE : 0,
+        (isGST && !isCustomTax && isINR) ? CGST_RATE : 0,
+        (isGST && !isCustomTax && isINR) ? SGST_RATE : 0,
+        isCustomTax ? custom_tax : 0,
+        grandTotal,
+        data.PONo,
+        data.PODate,
+        data.reference,
+        data.invoiceType,
+        data.invoiceDate,
+        invoiceId
+      ]
+    );
+
+    await conn.execute(
+      `DELETE FROM invoice_items WHERE invoice_id = ?`,
+      [invoiceId]
+    );
+
+    const finalValues = invoiceItemsValues.map(row => [
+      invoiceId,
+      ...row
+    ]);
+
+    await conn.query(
+      `
+      INSERT INTO invoice_items (
+        invoice_id,
+        service_id,
+        cost,
+        igst,
+        cgst,
+        sgst,
+        expiry,
+        naration
+      ) VALUES ?
+      `,
+      [finalValues]
+    );
+
+    await conn.commit();
+
+    return {
+      success: true,
+      message: "Invoice Updated",
+    };
+
+  } catch (error) {
+    await conn.rollback();
+    console.error(error);
+
+    return {
+      success: false,
+      message: "Update Failed",
     };
   } finally {
     conn.release();
@@ -648,6 +890,8 @@ export const fetchInvoiceById = async (invoiceId: number) => {
     'status', i.status,
     'grandTotal', i.grand_total,
     'createdAt', i.created_at,
+    'invoiceDate', i.invoice_date,
+    'type', i.type,
 
     'client', JSON_OBJECT(
       'id', i.client_id,
@@ -707,7 +951,10 @@ export const fetchInvoiceById = async (invoiceId: number) => {
   }
 };
 
-export const updateStatus = async (invoiceId: number) => {
+export const updateStatus = async (
+  invoiceId: number,
+  newStatus: string
+) => {
   try {
     const session = await getCurrentUserSafe();
     const userId = session?.id;
@@ -720,9 +967,37 @@ export const updateStatus = async (invoiceId: number) => {
       return { success: false, message: "Unauthorized" };
     }
 
+    const [check]: any = await db.query(
+      "SELECT status FROM invoice WHERE id = ?",
+      [invoiceId]
+    );
+
+    if (check.length === 0) {
+      return {
+        success: false,
+        message: "No Invoice found"
+      }
+    }
+
+    const status = check[0].status;
+
+    if (status === "paid") {
+      return {
+        success: false,
+        message: "This action cannot be performed because the invoice is already marked as paid."
+      }
+    }
+
+    if (status === "cancelled") {
+      return {
+        success: false,
+        message: "This action cannot be performed because the invoice is already marked as cancelled."
+      }
+    }
+
     const [result] = await db.query(
       "UPDATE invoice SET status = ? WHERE id = ?",
-      ["paid", invoiceId]
+      [newStatus, invoiceId]
     );
 
     return {
@@ -755,11 +1030,11 @@ export const fetchStats = async (fy?: string) => {
     const [rows] = await db.query<StatsResult[]>(
       `
       SELECT 
-        SUM(grand_total) AS total_sales,
+        SUM(sub_total) AS total_sales,
         SUM(CASE WHEN status = 'pending' THEN grand_total ELSE 0 END) AS pending_amount,
         SUM(CASE WHEN status = 'paid' THEN grand_total ELSE 0 END) AS paid_amount
       FROM invoice
-      WHERE created_at >= ? AND created_at < ?
+      WHERE status != "cancelled" AND created_at >= ? AND created_at < ?
       `,
       [startDate, endDate]
     );
@@ -870,7 +1145,6 @@ LIMIT ? OFFSET ?
   }
 };
 
-
 export const fetchClientReportByState = async (
   state?: string,
   page: number = 1,
@@ -965,5 +1239,139 @@ LEFT JOIN (
     };
   } finally {
     conn.release();
+  }
+};
+
+export const deleteInvoice = async (invoiceId: number) => {
+  const conn = await db.getConnection();
+
+  try {
+    const session = await getCurrentUserSafe();
+    const userId = session?.id;
+
+    if (!userId || session.iss !== "thaverTechInvoiceGenerator") {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!allowedRoles.includes(session.role)) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    await conn.beginTransaction();
+
+    const [check]: any = await db.query(
+      "SELECT status FROM invoice WHERE id = ?",
+      [invoiceId]
+    );
+
+    if (check.length === 0) {
+      return {
+        success: false,
+        message: "No Invoice found"
+      }
+    }
+
+    const status = check[0].status;
+
+    if (status === "paid") {
+      return {
+        success: false,
+        message: "This action cannot be performed because the invoice is already marked as paid."
+      }
+    }
+
+    const [rows]: any = await conn.execute(
+      `SELECT id, invoice_id FROM invoice ORDER BY id DESC LIMIT 1 FOR UPDATE`
+    );
+
+    if (!rows.length) {
+      await conn.rollback();
+      return {
+        success: false,
+        message: "No invoices found",
+      };
+    }
+
+    const invoiceSequenceNo = Number(rows[0].invoice_id.split("/")[2]);
+
+    const [sequence]: any = await conn.execute(
+      `SELECT invoice_no FROM sequence WHERE name="invoice" FOR UPDATE`
+    );
+
+    const currentSequenceNo = sequence[0].invoice_no;
+
+    if (Number(invoiceSequenceNo) !== (Number(currentSequenceNo) - 1)) {
+      await conn.rollback();
+      return {
+        success: false,
+        message: "Sequence Mismatch. Delete not allowed",
+      };
+    }
+
+    const latestId = rows[0]?.id;
+
+    if (latestId !== invoiceId) {
+      await conn.rollback();
+      return {
+        success: false,
+        message: "Only latest invoice can be deleted",
+      };
+    }
+
+    await conn.query(
+      "DELETE FROM invoice_items WHERE invoice_id = ?",
+      [invoiceId]
+    );
+
+    await conn.query(
+      "DELETE FROM invoice WHERE id = ?",
+      [invoiceId]
+    );
+
+    await conn.query(
+      `UPDATE sequence SET invoice_no = invoice_no - 1 WHERE name = 'invoice'`
+    );
+
+    await conn.commit();
+
+    return {
+      success: true,
+      message: "Invoice deleted",
+    };
+  } catch (error) {
+    await conn.rollback();
+    console.error("Error deleting invoice:", error);
+
+    return { success: false, message: "Delete failed" };
+  } finally {
+    conn.release();
+  }
+};
+
+export const cancelInvoice = async (invoiceId: number) => {
+  try {
+    const session = await getCurrentUserSafe();
+    const userId = session?.id;
+
+    if (!userId || session.iss !== "thaverTechInvoiceGenerator") {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!allowedRoles.includes(session.role)) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const [result] = await db.query(
+      "UPDATE invoice SET status = ? WHERE id = ?",
+      ["cancelled", invoiceId]
+    );
+
+    return {
+      success: true,
+      message: "Invoice marked as cancelled",
+    };
+  } catch (error) {
+    console.error("Error updating status:", error);
+    return { success: false, message: "Something went wrong" };
   }
 };

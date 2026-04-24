@@ -11,7 +11,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { BarChart, CircleUser, CreditCard, Edit, FileText, Home, LogOut, LogOutIcon, UserPlus, Users } from "lucide-react"
+import { BarChart, CircleUser, CreditCard, Edit, FileText, Home, LogOut, LogOutIcon, NotebookPen, UserPlus, Users } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { logout } from "@/lib/logout"
@@ -57,6 +57,15 @@ export function AppSidebar() {
                                 <SidebarMenuButton>
                                     <FileText className="w-4 h-4" />
                                     Invoice
+                                </SidebarMenuButton>
+                            </Link>
+                        </SidebarMenuItem>
+
+                        <SidebarMenuItem>
+                            <Link href="/dashboard/taxCredit">
+                                <SidebarMenuButton>
+                                    <NotebookPen className="w-4 h-4" />
+                                    Tax Credit
                                 </SidebarMenuButton>
                             </Link>
                         </SidebarMenuItem>

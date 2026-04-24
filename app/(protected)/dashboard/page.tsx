@@ -1,4 +1,3 @@
-import { Input } from "@/components/ui/input"
 import { fetchPendingInvoices, fetchServices, fetchServicesByExpiry, fetchStats } from "@/lib/actions/invoice"
 import { DataTable } from "@/components/dataTable"
 import { columns } from "@/components/Dashboard/pendingTableColumn"
@@ -62,6 +61,7 @@ export default async function Dashboard({
 
   const invoiceNo = await invoiceString();
 
+
   return (
     <div className="flex flex-col gap-6 p-6">
 
@@ -79,12 +79,12 @@ export default async function Dashboard({
         </div>
 
         <AddInvoicePopup
+          mode="new"
           ClientList={clientData?.data || []}
           ServicesList={servicesData?.data || []}
           companyData={companyData?.data || undefined}
           invoiceNo={invoiceNo}
         />
-
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

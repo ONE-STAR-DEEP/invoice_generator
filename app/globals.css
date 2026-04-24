@@ -130,7 +130,7 @@
     @apply font-sans;
   }
 
-  .b-border{
+  .b-border {
     @apply border-b border-primary;
   }
 }
@@ -156,5 +156,6 @@
 .no-break {
   break-inside: avoid;
   page-break-inside: avoid;
-  -webkit-column-break-inside: avoid; /* older browsers */
+  -webkit-column-break-inside: avoid;
+  /* older browsers */
 }

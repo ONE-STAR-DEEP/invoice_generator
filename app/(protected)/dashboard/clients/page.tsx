@@ -29,7 +29,7 @@ const Clients = async ({ searchParams }: PageProps) => {
 
       <section className="flex items-center justify-between border px-8 py-4 rounded-2xl bg-muted/50">
         <h1 className="font-semibold text-lg">Clients</h1>
-        <AddClientPopup />
+        <AddClientPopup mode='new'/>
       </section>
 
       <section className="flex-1 bg-muted/50 border border-border p-4 rounded-2xl overflow-auto min-h-0 flex flex-col space-y-6">

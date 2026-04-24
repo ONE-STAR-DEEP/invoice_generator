@@ -14,38 +14,26 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 import { Button } from "../ui/button";
-import { Plus } from "lucide-react";
+import { Edit, Plus } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { insertClient } from "@/lib/actions/clients";
+import { fetchClientDetails, insertClient, updateClient } from "@/lib/actions/clients";
 import { useAuth } from "../Users/roleContext";
 import Select from "react-select";
 import { Country, State, City } from "country-state-city";
 import { selectClassNames, selectStyles } from "../Invoice/addInvoicePopup";
+import { ClientFormData } from "@/lib/types/dataTypes";
+import { triggerClientRefresh } from "./ViewInvoices";
 
 type Option = {
     label: string;
     value: string;
 };
 
-type ClientData = {
-    companyName: string;
-    gstNumber: string;
-    taxNumber: string;
-    pan: string;
-    address: string;
-    city: string;
-    state: string;
-    country: string;
-    pincode: string;
-    email: string;
-    phone: string;
-    assignedPerson: string;
-    designation: string;
-    notes: string;
-};
-
-const AddClientPopup = () => {
+const AddClientPopup = ({ id, mode }: {
+    id?: number;
+    mode: string;
+}) => {
 
     const [country, setCountry] = useState<Option | null>(null);
     const [state, setState] = useState<Option | null>(null);
@@ -123,7 +111,7 @@ const AddClientPopup = () => {
         setMounted(true)
     }, [])
 
-    const initialClientData: ClientData = {
+    const initialClientFormData: ClientFormData = {
         companyName: "",
         gstNumber: "",
         taxNumber: "",
@@ -140,25 +128,107 @@ const AddClientPopup = () => {
         notes: "",
     };
 
-    const [data, setData] = useState<ClientData>(initialClientData);
+    const [data, setData] = useState<ClientFormData>(initialClientFormData);
 
     const [open, setOpen] = useState(false)
 
+    const [block, setBlock] = useState(false);
+
     useEffect(() => {
         if (open) {
-            setData({ ...initialClientData });
+            setData({ ...initialClientFormData });
             setTaxType
         }
     }, [open]);
 
+    useEffect(() => {
+        if (!id) return;
+        if (mode === "update" && open) {
+            const loadClientFormData = async () => {
+                const res = await fetchClientDetails(id);
+                setData({
+                    companyName: res.data.company_name || "",
+                    gstNumber: res.data.gst_number || "",
+                    taxNumber: res.data.tax_number || "",
+                    pan: res.data.pan || "",
+                    address: res.data.address || "",
+                    city: res.data.city || "",
+                    state: res.data.state || "",
+                    country: res.data.country || "",
+                    pincode: res.data.pincode || "",
+                    email: res.data.email || "",
+                    phone: res.data.phone || "",
+                    assignedPerson: res.data.assigned_person || "",
+                    designation: res.data.designation || "",
+                    notes: res.data.notes || "",
+                })
+
+                if (res.data.tax_number && res.data.tax_number.length > 0) {
+                    setTaxType({ value: "taxNumber", label: "TAX Number" })
+                }
+                setBlock(true)
+            }
+            loadClientFormData();
+        }
+    }, [id, mode, open])
+
+    useEffect(() => {
+        if (!data.country || countries.length === 0) return;
+
+        const foundCountry = countries.find(
+            c => c.label === data.country
+        );
+
+        if (foundCountry) {
+            setCountry(foundCountry);
+        }
+    }, [data.country, countries]);
+
+    useEffect(() => {
+        if (!data.state || states.length === 0) return;
+
+        const foundState = states.find(
+            s => s.label === data.state
+        );
+
+        if (foundState) {
+            setState(foundState);
+        }
+    }, [data.state, states]);
+
+    useEffect(() => {
+        if (!data.city || cities.length === 0) return;
+
+        const foundCity = cities.find(
+            c => c.label === data.city
+        );
+
+        if (foundCity) {
+            setCity(foundCity);
+        }
+    }, [data.city, cities]);
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
 
-        const res = await insertClient(data);
+        if (mode === "new") {
 
-        if (!res.success) {
-            alert("Failed to insert");
-            return;
+            const res = await insertClient(data);
+
+            if (!res.success) {
+                alert("Failed to insert");
+                return;
+            }
+        } else if (mode === "update" && id) {
+
+            const res = await updateClient(id, data);
+
+            if (!res.success) {
+                alert("Failed to update");
+                return;
+            }
+
+            triggerClientRefresh()
         }
 
         setOpen(false);
@@ -167,9 +237,21 @@ const AddClientPopup = () => {
 
     return (
         <div>
-            {user?.role !== "user" && <Button type="button" className="p-4" onClick={() => { setOpen(true) }}>
-                <Plus /> Add Client
-            </Button>}
+            {user?.role !== "user" &&
+                <>
+                    {mode === "new" ?
+                        <>
+                            <Button type="button" className="p-4" onClick={() => { setOpen(true) }}>
+                                <Plus /> Add Client
+                            </Button>
+
+                        </>
+                        :
+                        <Edit className="my-2" onClick={() => setOpen(true)} />
+                    }
+                </>
+            }
+
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent
@@ -204,6 +286,7 @@ const AddClientPopup = () => {
                                 <Field>
                                     <Label htmlFor="companyName">Company Name</Label>
                                     <Input id="companyName" name="companyName" placeholder="Company" required
+                                        value={data.companyName}
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
@@ -216,6 +299,7 @@ const AddClientPopup = () => {
                                 <Field>
                                     <Label htmlFor="email">Email</Label>
                                     <Input id="email" name="email" placeholder="ex@example.com"
+                                        value={data.email}
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
@@ -228,6 +312,7 @@ const AddClientPopup = () => {
                                 <Field>
                                     <Label htmlFor="phone">Phone</Label>
                                     <Input id="phone" name="phone" placeholder="999999XXXX"
+                                        value={data.phone}
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
@@ -255,9 +340,10 @@ const AddClientPopup = () => {
                                     <Label htmlFor="phone">Tax Identification Type</Label>
                                     <Select<TaxOption>
                                         required
+                                        isDisabled={block}
                                         instanceId={"tax-id"}
                                         options={taxOption}
-                                        defaultValue={{ value: "gstNumber", label: "GSTIN" }}
+                                        value={taxType}
                                         placeholder="Select tax ID type"
                                         onChange={(val) => {
                                             if (!val) return;
@@ -299,6 +385,7 @@ const AddClientPopup = () => {
                                 <Field>
                                     <Label htmlFor="address">Address</Label>
                                     <Input id="address" name="address" placeholder="Office Address" required
+                                        value={data.address}
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
@@ -398,6 +485,7 @@ const AddClientPopup = () => {
                                 <Field>
                                     <Label htmlFor="pincode">Pincode</Label>
                                     <Input id="pincode" name="pincode" placeholder="000000"
+                                        value={data.pincode}
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
@@ -418,6 +506,7 @@ const AddClientPopup = () => {
                                 <Field>
                                     <Label htmlFor="assignedPerson">Person</Label>
                                     <Input id="assignedPerson" name="assignedPerson" placeholder="Full Name"
+                                        value={data.assignedPerson}
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
@@ -430,6 +519,7 @@ const AddClientPopup = () => {
                                 <Field>
                                     <Label htmlFor="personDesignation">Person Designation</Label>
                                     <Input id="personDesignation" name="personDesignation" placeholder="Designation"
+                                        value={data.designation}
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
@@ -442,6 +532,7 @@ const AddClientPopup = () => {
                                 <Field>
                                     <Label htmlFor="notes">Notes</Label>
                                     <Input id="notes" name="notes" placeholder="Notes"
+                                        value={data.notes}
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({

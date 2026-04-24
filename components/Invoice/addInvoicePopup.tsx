@@ -15,21 +15,21 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 
 import { Button } from "../ui/button";
-import { Plus, Trash } from "lucide-react";
+import { Edit, Lock, Plus, Trash } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CreatableSelect from "react-select/creatable";
-import { ClientData, InvoiceData, InvoiceItem, SellerCompany, Service, ServiceOptions } from "@/lib/types/dataTypes";
+import { ClientData, InvoiceData, InvoiceItem, InvoiceType, SellerCompany, Service, ServiceOptions } from "@/lib/types/dataTypes";
 import Select from "react-select";
-import { insertInvoice } from "@/lib/actions/invoice";
+import { fetchInvoiceById, fetchServices, insertInvoice, updateInvoice } from "@/lib/actions/invoice";
 import { useAuth } from "../Users/roleContext";
+import { fetchClients } from "@/lib/actions/clients";
+import { triggerInvoiceRefresh } from "./viewInvoicePopup";
 
 type ClientOption = {
     label: string
     value: number
 }
-
-type InvoiceType = "GST" | "NON_GST" | "NON_TAXABLE" | "CUSTOM_TAX"
 
 type CurrencySymbol = "₹" | "$";
 
@@ -46,8 +46,13 @@ export const selectStyles = {
     }),
 }
 
-const formatDate = (date: Date) =>
-    date.toLocaleDateString("en-CA")
+const formatDate = (date: string | Date | null) => {
+    if (!date) return "";
+
+    const d = typeof date === "string" ? new Date(date) : date;
+
+    return d.toLocaleDateString("en-CA");
+};
 
 const round = (val: number) => Math.round(val * 100) / 100;
 
@@ -76,20 +81,25 @@ export const selectClassNames = {
     dropdownIndicator: () => "text-muted-foreground",
 }
 
-const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo }: {
+const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo, id, mode }: {
     ClientList?: ClientData[];
     ServicesList?: Service[];
     companyData?: SellerCompany;
     invoiceNo?: string;
+    id?: number;
+    mode: string;
 }) => {
 
     const router = useRouter();
     const [mounted, setMounted] = useState(false)
-
     const [currencySymbol, setCurrencySymbol] = useState<CurrencySymbol>("₹");
     const [open, setOpen] = useState(false)
     const [customTax, setCustomTax] = useState(0)
     const [inputValues, setInputValues] = useState<Record<string, string>>({})
+    const blocked = (mode === "update")
+    const [clients, setClients] = useState<ClientData[]>(ClientList || [])
+    const [services, setServices] = useState<Service[]>(ServicesList || [])
+    const [isLocked, setLocked] = useState(false);
 
     const user = useAuth()
 
@@ -98,13 +108,13 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo }: {
     }, [])
 
     const formattedClients: ClientOption[] =
-        (ClientList || []).map((client: any) => ({
+        (clients || []).map((client: any) => ({
             label: client.company_name,
             value: client.id,
         }))
 
     const formattedServices: ServiceOptions[] =
-        (ServicesList || []).map((service: any) => ({
+        (services || []).map((service: any) => ({
             label: service.name,
             value: String(service.id),
         }))
@@ -231,16 +241,83 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo }: {
         }
     }, [data.clientId])
 
+
+    useEffect(() => {
+
+        if (!open) return
+        if (mode === "update" && id) {
+
+            const loadData = async () => {
+                const res = await fetchInvoiceById(id);
+                const clientData = await fetchClients();
+                const servicesData = await fetchServices();
+                if (!res.success || !clientData.success || !servicesData.success) {
+                    alert(res.message)
+                    return
+                }
+                setClients(clientData.data!)
+                setServices(servicesData.data)
+                const data = res.data
+
+                setLocked(data?.invoice.status === "paid" || data?.invoice.status === "cancelled")
+
+                setData({
+                    clientId: data?.invoice.client.id || 0,
+                    invoiceType: data?.invoice.type || "GST",
+                    currency: data?.invoice.currency || "INR",
+                    dollar_rate: data?.invoice.dollar_rate || 0,
+                    invoiceId: data?.invoice.invoiceId || "",
+                    invoiceDate: data?.invoice.invoiceDate || data?.invoice.createdAt || "",
+                    clientGst: data?.invoice.client.gstNumber || "",
+                    tax_number: data?.invoice.client.taxNumber || "",
+                    PONo: data?.invoice.poNo || "",
+                    PODate: data?.invoice.poDate || null,
+                    reference: data?.invoice.reference || "",
+                })
+                setCustomTax(data?.invoice.customRate || 0)
+
+                const items = data?.invoice.items
+                items && setItems(
+                    items.map((item: any) => ({
+                        id: crypto.randomUUID(),
+                        service: item.service
+                            ? {
+                                label: item.service,
+                                value: String(item.serviceId ?? item.service),
+                            }
+                            : null,
+                        serviceId: item.serviceId || null,
+                        igst: item.igst ?? null,
+                        cgst: item.cgst ?? null,
+                        sgst: item.sgst ?? null,
+                        hsn: item.hsn || "",
+                        expiry: item.expiry || null,
+                        cost: item.cost?.toString() || "",
+                        naration: item.naration || ""
+                    }))
+                );
+            }
+            loadData();
+        }
+
+    }, [open, mode, id]);
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
 
-        console.log(items)
-
-        const res = await insertInvoice(data, items, customTax);
-
-        if (!res.success) {
-            alert(res.message)
-            return;
+        if (mode === "new") {
+            const res = await insertInvoice(data, items, customTax);
+            if (!res.success) {
+                alert(res.message)
+                return;
+            }
+        } else if (mode === "update" && id) {
+            const res = await updateInvoice(id, data, items, customTax);
+            if (!res.success) {
+                alert(res.message)
+                return;
+            }
+            triggerInvoiceRefresh();
         }
 
         resetForm();
@@ -250,9 +327,17 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo }: {
 
     return (
         <div>
-            {user?.role !== "user" && <Button type="button" className="p-4" onClick={() => { setOpen(true) }}>
-                <Plus /> Generate Invoice
-            </Button>}
+            {user?.role !== "user" &&
+                <>
+                    {mode === "new" ?
+                        <Button type="button" className="p-4" onClick={() => { setOpen(true) }}>
+                            <Plus /> Generate Invoice
+                        </Button>
+                        :
+                        <Edit size={28} className="text-primary hover:bg-secondary p-1 rounded-sm" onClick={() => { setOpen(true) }} />
+                    }
+                </>
+            }
 
             <Dialog open={open} onOpenChange={(val) => {
                 if (!val) resetForm()
@@ -271,293 +356,69 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo }: {
                             overflow-y-auto
                             "
                 >
-                    <form onSubmit={handleSubmit}>
-                        <DialogHeader className="p-6 pb-2">
-                            <DialogTitle className="text-xl">Invoice Details</DialogTitle>
-                            <DialogDescription>
-                                Enter the details below to generate a new invoice in the system.
-                            </DialogDescription>
-                        </DialogHeader>
+                    {isLocked ?
+                        <>
+                            <div className="flex flex-col items-center justify-center h-full px-4">
+                                {/* Icon */}
+                                <div className="rounded-full bg-muted p-4 mb-6">
+                                    <Lock className="w-6 h-6 text-foreground" />
+                                </div>
 
-                        <div className="flex-1 overflow-y-auto px-6 py-4">
+                                {/* Content */}
+                                <div className="text-center space-y-4 max-w-sm mb-8">
+                                    <h2 className="text-3xl font-semibold text-foreground">Invoice Locked</h2>
 
-                            <FieldGroup className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-                                <Field>
-                                    <FieldLabel>Select Client</FieldLabel>
-                                    <Select<ClientOption, false>
-                                        instanceId={`client`}
-                                        options={formattedClients}
-                                        value={formattedClients.find(
-                                            (option) => option.value === data.clientId
-                                        )}
-                                        onChange={(selected) => {
-                                            const client = ClientList?.find(
-                                                (c) => c.id === Number(selected?.value)
-                                            )
-
-                                            setData((prev) => ({
-                                                ...prev,
-                                                clientId: selected?.value || 0,
-                                                clientGst: client?.gst_number || "",
-                                                tax_number: client?.tax_number || "",
-                                                reference: client?.assigned_person || ""
-                                            }))
-                                        }}
-                                        placeholder="Select Client..."
-
-                                        menuPortalTarget={mounted ? document.body : undefined}
-                                        menuPosition="fixed"
-                                        menuShouldBlockScroll={true}
-
-                                        unstyled
-                                        styles={selectStyles}
-                                        classNames={selectClassNames}
-                                    />
-                                </Field>
-
-                                <Field>
-                                    <FieldLabel>Invoice Type</FieldLabel>
-                                    <Select<Option, false>
-                                        instanceId="invoiceType"
-                                        options={invoiceTypeOptions}
-                                        value={invoiceTypeOptions.find(
-                                            (option) => option.value === data.invoiceType
-                                        ) || null}
-                                        onChange={(selected) =>
-                                            setData((prev) => ({
-                                                ...prev,
-                                                invoiceType: selected?.value as InvoiceType || "GST",
-                                            }))
-                                        }
-                                        placeholder="Select service..."
-
-                                        menuPortalTarget={mounted ? document.body : undefined}
-                                        menuPosition="fixed"
-                                        menuShouldBlockScroll={true}
-
-                                        unstyled
-                                        styles={selectStyles}
-                                        classNames={selectClassNames}
-                                    />
-                                </Field>
-
-                                <Field>
-                                    <Label htmlFor="InvoiceId">Invoice ID</Label>
-                                    <Input id="invoiceId" name="invoiceId" placeholder="Invoice ID" disabled
-                                        value={data.invoiceId}
-                                        className="h-10 mb-0 pb-0"
-                                        onChange={(e) =>
-                                            setData(prev => ({
-                                                ...prev,
-                                                invoiceId: e.target.value
-                                            }))
-                                        }
-                                    />
-                                </Field>
-
-                                <Field>
-                                    <Label htmlFor="invoiceDate">Invoice Date</Label>
-                                    <Input id="invoiceDate" name="invoiceDate" type="date" required
-                                        value={data.invoiceDate || ""}
-                                        className="h-10"
-                                        onChange={(e) =>
-                                            setData(prev => ({
-                                                ...prev,
-                                                invoiceDate: e.target.value
-                                            }))
-                                        }
-                                    />
-                                </Field>
-
-                                <Field>
-                                    <Label htmlFor="clientGst">{hasGST ? "Client GSTIN" : "Client Tax Number"}</Label>
-                                    <Input id="clientGst" name="clientGst" placeholder={hasGST ? "22AAAAA0000A1Z5" : "Tax Number"} required disabled
-                                        value={hasGST ? data.clientGst : data.tax_number}
-                                        className="h-10"
-                                    />
-                                </Field>
-                                <Field>
-                                    <Label htmlFor="poNo">PO No</Label>
-                                    <Input id="poNo" name="poNo" placeholder="999999XXXX" required
-                                        value={data.PONo}
-                                        className="h-10"
-                                        onChange={(e) =>
-                                            setData(prev => ({
-                                                ...prev,
-                                                PONo: e.target.value
-                                            }))
-                                        }
-                                    />
-                                </Field>
-                                <Field>
-                                    <Label htmlFor="PODate">PO Date</Label>
-                                    <Input
-                                        type="date"
-                                        value={data.PODate || ""}
-                                        onChange={(e) =>
-                                            setData(prev => ({
-                                                ...prev,
-                                                PODate: e.target.value
-                                            }))
-                                        }
-                                    />
-                                </Field>
-                                <Field>
-                                    <Label htmlFor="reference">Reference</Label>
-                                    <Input id="reference" name="reference" placeholder="Name" required
-                                        value={data.reference}
-                                        className="h-10"
-                                        onChange={(e) =>
-                                            setData(prev => ({
-                                                ...prev,
-                                                reference: e.target.value
-                                            }))
-                                        }
-                                    />
-                                </Field>
-                            </FieldGroup>
-                            <div className="h-4"></div>
-
-                            <div className="grid grid-cols-4 py-2">
-                                <div>
-                                    <Label className="text-lg font-semibold">Billing Currency</Label>
-                                    <div className="flex items-center space-x-2">
-                                        <Label htmlFor="inr">INR(₹)</Label>
-                                        <Switch
-                                            id="invoice-currency"
-                                            checked={data.currency === "USD"}
-                                            onCheckedChange={(checked) => {
-                                                setCurrencySymbol(checked ? "$" : "₹");
-                                                setData((prev) => ({
-                                                    ...prev,
-                                                    currency: checked ? "USD" : "INR",
-                                                }));
-                                            }}
-                                        />
-                                        <Label htmlFor="dollar">Dollar($)</Label>
+                                    <div className="space-y-2">
+                                        <p className="text-lg text-foreground">
+                                            This invoice cannot be edited.
+                                        </p>
+                                        <p className="text-base text-muted-foreground">
+                                            This Invoice has already been processed. All details are locked to maintain record integrity.
+                                        </p>
                                     </div>
                                 </div>
 
-                                {data.currency === "USD" &&
-                                    <div>
-                                        <Field>
-                                            <Label htmlFor="reference">Dollar Rates (₹)</Label>
-                                            <Input id="tax_rate" name="tax_rate" placeholder="Tax Rate" required
-                                                value={data.dollar_rate}
-                                                className="h-10"
-                                                onChange={(e) => {
-                                                    setData(prev => ({
-                                                        ...prev,
-                                                        dollar_rate: Number(e.target.value)
-                                                    }))
-                                                }}
-                                            />
-                                        </Field>
-                                    </div>
-                                }
-
-                                {data.invoiceType === "CUSTOM_TAX" &&
-                                    <div>
-                                        <Field>
-                                            <Label htmlFor="reference">Tax Rates(%)</Label>
-                                            <Input id="tax_rate" name="tax_rate" placeholder="Tax Rate" required
-                                                value={customTax}
-                                                className="h-10"
-                                                onChange={(e) => { setCustomTax(Number(e.target.value || 0)) }}
-                                            />
-                                        </Field>
-                                    </div>
-                                }
+                                {/* Actions */}
+                                
                             </div>
+                        </>
+                        :
+                        <form onSubmit={handleSubmit}>
+                            <DialogHeader className="p-6 pb-2">
+                                <DialogTitle className="text-xl">Invoice Details</DialogTitle>
+                                <DialogDescription>
+                                    Enter the details below to generate a new invoice in the system.
+                                </DialogDescription>
+                            </DialogHeader>
 
-                            {items.map((item, index) => (
-                                <FieldGroup
-                                    key={item.id}
-                                    className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-4 mt-4"
-                                >
-                                    {/* Service */}
+                            <div className="flex-1 overflow-y-auto px-6 py-4">
+
+                                <FieldGroup className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
                                     <Field>
-                                        <Label>Service Name</Label>
-
-                                        <CreatableSelect<ServiceOptions>
-                                            instanceId={`service-${index}`}
-                                            options={formattedServices}
-
-                                            value={
-                                                formattedServices.find(
-                                                    (opt) => Number(opt.value) === item.serviceId
-                                                ) || (item.service
-                                                    ? { label: item.service, value: item.service }
-                                                    : null)
-                                            }
-
+                                        <FieldLabel>Select Client</FieldLabel>
+                                        <Select<ClientOption, false>
+                                            isDisabled={blocked}
+                                            instanceId={`client`}
+                                            options={formattedClients}
+                                            value={formattedClients.find(
+                                                (option) => option.value === data.clientId
+                                            )}
                                             onChange={(selected) => {
-
-                                                const servive = ServicesList?.find(
+                                                const client = ClientList?.find(
                                                     (c) => c.id === Number(selected?.value)
                                                 )
 
-                                                setItems((prev) =>
-                                                    prev.map((it) => {
-                                                        if (it.id !== item.id) return it
-
-                                                        if (!selected) {
-                                                            return { ...it, serviceId: null, service: null }
-                                                        }
-
-                                                        const value = selected.value
-
-                                                        // Existing service
-                                                        if (!isNaN(Number(value))) {
-                                                            return {
-                                                                ...it,
-                                                                serviceId: Number(value),
-                                                                service: selected.label,
-                                                                hsn: String(servive?.hsn_code)
-                                                            }
-                                                        }
-
-                                                        // Created service
-                                                        return {
-                                                            ...it,
-                                                            serviceId: null,
-                                                            service: value,
-                                                        }
-                                                    })
-                                                )
-                                            }}
-
-                                            onInputChange={(input) => {
-                                                setInputValues((prev) => ({
+                                                setData((prev) => ({
                                                     ...prev,
-                                                    [item.id]: input,
+                                                    clientId: selected?.value || 0,
+                                                    clientGst: client?.gst_number || "",
+                                                    tax_number: client?.tax_number || "",
+                                                    reference: client?.assigned_person || ""
                                                 }))
                                             }}
+                                            placeholder="Select Client..."
 
-                                            onBlur={() => {
-                                                const input = inputValues[item.id]
-
-                                                if (
-                                                    !input ||
-                                                    item.serviceId ||
-                                                    input === item.service
-                                                ) return
-
-                                                setItems((prev) =>
-                                                    prev.map((it) =>
-                                                        it.id === item.id
-                                                            ? {
-                                                                ...it,
-                                                                serviceId: null,
-                                                                service: input,
-                                                            }
-                                                            : it
-                                                    )
-                                                )
-                                            }}
-
-                                            placeholder="Select service..."
                                             menuPortalTarget={mounted ? document.body : undefined}
                                             menuPosition="fixed"
                                             menuShouldBlockScroll={true}
@@ -566,243 +427,493 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo }: {
                                             styles={selectStyles}
                                             classNames={selectClassNames}
                                         />
-
                                     </Field>
 
-                                    {/* HSN */}
                                     <Field>
-                                        <Label>HSN code</Label>
-                                        <Input
-                                            value={item.hsn}
-                                            placeholder="HSN code"
-                                            className="h-10"
+                                        <FieldLabel>Invoice Type</FieldLabel>
+                                        <Select<Option, false>
+                                            instanceId="invoiceType"
+                                            options={invoiceTypeOptions}
+                                            value={invoiceTypeOptions.find(
+                                                (option) => option.value === data.invoiceType
+                                            ) || null}
+                                            onChange={(selected) =>
+                                                setData((prev) => ({
+                                                    ...prev,
+                                                    invoiceType: selected?.value as InvoiceType || "GST",
+                                                }))
+                                            }
+                                            placeholder="Select service..."
+
+                                            menuPortalTarget={mounted ? document.body : undefined}
+                                            menuPosition="fixed"
+                                            menuShouldBlockScroll={true}
+
+                                            unstyled
+                                            styles={selectStyles}
+                                            classNames={selectClassNames}
+                                        />
+                                    </Field>
+
+                                    <Field>
+                                        <Label htmlFor="InvoiceId">Invoice ID</Label>
+                                        <Input id="invoiceId" name="invoiceId" placeholder="Invoice ID" disabled
+                                            value={data.invoiceId}
+                                            className="h-10 mb-0 pb-0"
                                             onChange={(e) =>
-                                                setItems((prev) =>
-                                                    prev.map((it) =>
-                                                        it.id === item.id
-                                                            ? { ...it, hsn: e.target.value.toUpperCase() }
-                                                            : it
-                                                    )
-                                                )
+                                                setData(prev => ({
+                                                    ...prev,
+                                                    invoiceId: e.target.value
+                                                }))
                                             }
                                         />
                                     </Field>
 
-                                    {/* Duration */}
                                     <Field>
-                                        <Label>Expiry Date</Label>
+                                        <Label htmlFor="invoiceDate">Invoice Date</Label>
+                                        <Input id="invoiceDate" name="invoiceDate" type="date" required
+                                            value={data.invoiceDate ? data.invoiceDate.slice(0, 10) : ""}
+                                            className="h-10"
+                                            onChange={(e) =>
+                                                setData(prev => ({
+                                                    ...prev,
+                                                    invoiceDate: e.target.value
+                                                }))
+                                            }
+                                        />
+                                    </Field>
+
+                                    <Field>
+                                        <Label htmlFor="clientGst">{hasGST ? "Client GSTIN" : "Client Tax Number"}</Label>
+                                        <Input id="clientGst" name="clientGst" placeholder={hasGST ? "22AAAAA0000A1Z5" : "Tax Number"} required disabled
+                                            value={hasGST ? data.clientGst : data.tax_number}
+                                            className="h-10"
+                                        />
+                                    </Field>
+                                    <Field>
+                                        <Label htmlFor="poNo">PO No</Label>
+                                        <Input id="poNo" name="poNo" placeholder="999999XXXX" required
+                                            value={data.PONo}
+                                            className="h-10"
+                                            onChange={(e) =>
+                                                setData(prev => ({
+                                                    ...prev,
+                                                    PONo: e.target.value
+                                                }))
+                                            }
+                                        />
+                                    </Field>
+                                    <Field>
+                                        <Label htmlFor="PODate">PO Date</Label>
                                         <Input
                                             type="date"
-                                            value={item.expiry ? formatDate(item.expiry) : ""}
                                             className="h-10"
+                                            value={data.PODate || ""}
                                             onChange={(e) =>
-                                                setItems((prev) =>
-                                                    prev.map((it) =>
-                                                        it.id === item.id
-                                                            ? { ...it, expiry: new Date(e.target.value) }
-                                                            : it
-                                                    )
-                                                )
+                                                setData(prev => ({
+                                                    ...prev,
+                                                    PODate: e.target.value
+                                                }))
                                             }
                                         />
                                     </Field>
-
-                                    {/* Cost */}
                                     <Field>
-                                        <Label>Cost</Label>
-                                        <Input
-                                            value={item.cost}
-                                            placeholder="Cost"
+                                        <Label htmlFor="reference">Reference</Label>
+                                        <Input id="reference" name="reference" placeholder="Name" required
+                                            value={data.reference}
                                             className="h-10"
                                             onChange={(e) =>
-                                                setItems((prev) =>
-                                                    prev.map((it) =>
-                                                        it.id === item.id
-                                                            ? { ...it, cost: e.target.value }
-                                                            : it
-                                                    )
-                                                )
+                                                setData(prev => ({
+                                                    ...prev,
+                                                    reference: e.target.value
+                                                }))
                                             }
                                         />
                                     </Field>
-
-                                    {/* Delete */}
-                                    <Field className="flex items-end justify-end">
-                                        <button
-                                            type="button"
-                                            onClick={() => deleteItem(item.id)}
-                                            className="border border-muted rounded-lg group hover:bg-muted"
-                                        >
-                                            <Trash className="text-red-700 m-2 group-hover:text-primary" />
-                                        </button>
-                                    </Field>
-
-                                    <Field className="col-span-3">
-                                        <Label>Naration</Label>
-                                        <Input
-                                            value={item.naration}
-                                            placeholder="Naration about the service"
-                                            className="h-10"
-                                            onChange={(e) =>
-                                                setItems((prev) =>
-                                                    prev.map((it) =>
-                                                        it.id === item.id
-                                                            ? { ...it, naration: e.target.value }
-                                                            : it
-                                                    )
-                                                )
-                                            }
-                                        />
-                                    </Field>
-
                                 </FieldGroup>
-                            ))}
+                                <div className="h-4"></div>
 
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="mt-4"
-                                onClick={() =>
-                                    setItems((prev) => [
-                                        ...prev,
-                                        {
-                                            id: crypto.randomUUID(),
-                                            service: null,
-                                            serviceId: null,
-                                            igst: null,
-                                            cgst: null,
-                                            sgst: null,
-                                            hsn: "",
-                                            expiry: null,
-                                            cost: "",
-                                            naration: ""
-                                        },
-                                    ])
-                                }
-                            >
-                                + Add More
-                            </Button>
-
-                            {isTaxable ?
-
-                                <div className="mt-10">
-                                    <h1 className="text-xl font-semibold">GST Details</h1>
-
-                                    <div className="mt-4 space-y-3">
-
-                                        <div className="grid grid-cols-3 items-center border-b pb-2">
-                                            <span className="">Tax Type</span>
-
-                                            <span className="flex items-center justify-center">
-                                                Amount ({currencySymbol})
-                                            </span>
-
-                                            <span className="font-medium text-right">
-                                                Rates (%)
-                                            </span>
+                                <div className="grid grid-cols-4 py-2">
+                                    <div>
+                                        <Label className="text-lg font-semibold">Billing Currency</Label>
+                                        <div className="flex items-center space-x-2">
+                                            <Label htmlFor="inr">INR(₹)</Label>
+                                            <Switch
+                                                disabled={blocked}
+                                                id="invoice-currency"
+                                                checked={data.currency === "USD"}
+                                                onCheckedChange={(checked) => {
+                                                    setCurrencySymbol(checked ? "$" : "₹");
+                                                    setData((prev) => ({
+                                                        ...prev,
+                                                        currency: checked ? "USD" : "INR",
+                                                    }));
+                                                }}
+                                            />
+                                            <Label htmlFor="dollar">Dollar($)</Label>
                                         </div>
+                                    </div>
 
-                                        {data.invoiceType === "CUSTOM_TAX" ?
+                                    {data.currency === "USD" &&
+                                        <div>
+                                            <Field>
+                                                <Label htmlFor="reference">Dollar Rates (₹)</Label>
+                                                <Input id="tax_rate" name="tax_rate" placeholder="Tax Rate" required
+                                                    value={data.dollar_rate}
+                                                    className="h-10"
+                                                    onChange={(e) => {
+                                                        setData(prev => ({
+                                                            ...prev,
+                                                            dollar_rate: Number(e.target.value)
+                                                        }))
+                                                    }}
+                                                />
+                                            </Field>
+                                        </div>
+                                    }
 
-                                            <div>
-                                                <div className="grid grid-cols-3 items-center border-b pb-2">
-                                                    <span className="text-muted-foreground">Custom Tax</span>
+                                    {data.invoiceType === "CUSTOM_TAX" &&
+                                        <div>
+                                            <Field>
+                                                <Label htmlFor="reference">Tax Rates(%)</Label>
+                                                <Input id="tax_rate" name="tax_rate" placeholder="Tax Rate" required
+                                                    value={customTax}
+                                                    className="h-10"
+                                                    onChange={(e) => { setCustomTax(Number(e.target.value || 0)) }}
+                                                />
+                                            </Field>
+                                        </div>
+                                    }
+                                </div>
 
-                                                    <span className="text-muted-foreground flex items-center justify-center">
-                                                        {currencySymbol}
-                                                        {formatCurrency(bill.totalTax)}
-                                                    </span>
+                                {items.map((item, index) => (
+                                    <FieldGroup
+                                        key={item.id}
+                                        className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-4 mt-4"
+                                    >
+                                        {/* Service */}
+                                        <Field>
+                                            <Label>Service Name</Label>
 
-                                                    <span className="font-medium text-right">
-                                                        {customTax}%
-                                                    </span>
-                                                </div>
+                                            <CreatableSelect<ServiceOptions>
+                                                instanceId={`service-${index}`}
+                                                options={formattedServices}
+
+                                                value={item.service}
+
+                                                onChange={(selected) => {
+
+                                                    const service = services?.find(
+                                                        (c) => c.id === Number(selected?.value)
+                                                    )
+
+                                                    console.log(service, ServicesList)
+
+                                                    setItems((prev) =>
+                                                        prev.map((it) => {
+                                                            if (it.id !== item.id) return it
+
+                                                            if (!selected) {
+                                                                return { ...it, serviceId: null, service: null }
+                                                            }
+
+                                                            const value = selected.value
+
+                                                            // Existing service
+                                                            if (!isNaN(Number(value))) {
+                                                                return {
+                                                                    ...it,
+                                                                    serviceId: Number(value),
+                                                                    service: selected,
+                                                                    hsn: String(service?.hsn_code)
+                                                                }
+                                                            }
+
+                                                            return {
+                                                                ...it,
+                                                                serviceId: null,
+                                                                service: { label: value, value: value },
+                                                            }
+                                                        })
+                                                    )
+                                                }}
+
+                                                onInputChange={(input) => {
+                                                    setInputValues((prev) => ({
+                                                        ...prev,
+                                                        [item.id]: input,
+                                                    }))
+                                                }}
+
+                                                onBlur={() => {
+                                                    const input = inputValues[item.id]
+
+                                                    if (
+                                                        !input ||
+                                                        item.serviceId ||
+                                                        input === item.service?.label
+                                                    ) return
+
+                                                    setItems((prev) =>
+                                                        prev.map((it) =>
+                                                            it.id === item.id
+                                                                ? {
+                                                                    ...it,
+                                                                    serviceId: null,
+                                                                    service: { label: input, value: input },
+                                                                }
+                                                                : it
+                                                        )
+                                                    )
+                                                }}
+
+                                                placeholder="Select service..."
+                                                menuPortalTarget={mounted ? document.body : undefined}
+                                                menuPosition="fixed"
+                                                menuShouldBlockScroll={true}
+
+                                                unstyled
+                                                styles={selectStyles}
+                                                classNames={selectClassNames}
+                                            />
+
+                                        </Field>
+
+                                        {/* HSN */}
+                                        <Field>
+                                            <Label>HSN code</Label>
+                                            <Input
+                                                value={item.hsn}
+                                                placeholder="HSN code"
+                                                className="h-10"
+                                                onChange={(e) =>
+                                                    setItems((prev) =>
+                                                        prev.map((it) =>
+                                                            it.id === item.id
+                                                                ? { ...it, hsn: e.target.value.toUpperCase() }
+                                                                : it
+                                                        )
+                                                    )
+                                                }
+                                            />
+                                        </Field>
+
+                                        {/* Duration */}
+                                        <Field>
+                                            <Label>Expiry Date</Label>
+                                            <Input
+                                                type="date"
+                                                value={item.expiry ? formatDate(item.expiry) : ""}
+                                                className="h-10"
+                                                onChange={(e) =>
+                                                    setItems((prev) =>
+                                                        prev.map((it) =>
+                                                            it.id === item.id
+                                                                ? { ...it, expiry: new Date(e.target.value) }
+                                                                : it
+                                                        )
+                                                    )
+                                                }
+                                            />
+                                        </Field>
+
+                                        {/* Cost */}
+                                        <Field>
+                                            <Label>Cost</Label>
+                                            <Input
+                                                value={item.cost}
+                                                placeholder="Cost"
+                                                className="h-10"
+                                                onChange={(e) =>
+                                                    setItems((prev) =>
+                                                        prev.map((it) =>
+                                                            it.id === item.id
+                                                                ? { ...it, cost: e.target.value }
+                                                                : it
+                                                        )
+                                                    )
+                                                }
+                                            />
+                                        </Field>
+
+                                        {/* Delete */}
+                                        <Field className="flex items-end justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={() => deleteItem(item.id)}
+                                                className="border border-muted rounded-lg group hover:bg-muted"
+                                            >
+                                                <Trash className="text-red-700 m-2 group-hover:text-primary" />
+                                            </button>
+                                        </Field>
+
+                                        <Field className="col-span-3">
+                                            <Label>Naration</Label>
+                                            <Input
+                                                value={item.naration}
+                                                placeholder="Naration about the service"
+                                                className="h-10"
+                                                onChange={(e) =>
+                                                    setItems((prev) =>
+                                                        prev.map((it) =>
+                                                            it.id === item.id
+                                                                ? { ...it, naration: e.target.value }
+                                                                : it
+                                                        )
+                                                    )
+                                                }
+                                            />
+                                        </Field>
+
+                                    </FieldGroup>
+                                ))}
+
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="mt-4"
+                                    onClick={() =>
+                                        setItems((prev) => [
+                                            ...prev,
+                                            {
+                                                id: crypto.randomUUID(),
+                                                service: null,
+                                                serviceId: null,
+                                                igst: null,
+                                                cgst: null,
+                                                sgst: null,
+                                                hsn: "",
+                                                expiry: null,
+                                                cost: "",
+                                                naration: ""
+                                            },
+                                        ])
+                                    }
+                                >
+                                    + Add More
+                                </Button>
+
+                                {isTaxable ?
+
+                                    <div className="mt-10">
+                                        <h1 className="text-xl font-semibold">GST Details</h1>
+
+                                        <div className="mt-4 space-y-3">
+
+                                            <div className="grid grid-cols-3 items-center border-b pb-2">
+                                                <span className="">Tax Type</span>
+
+                                                <span className="flex items-center justify-center">
+                                                    Amount ({currencySymbol})
+                                                </span>
+
+                                                <span className="font-medium text-right">
+                                                    Rates (%)
+                                                </span>
                                             </div>
 
-                                            : <>
+                                            {data.invoiceType === "CUSTOM_TAX" ?
 
-                                                <div className="grid grid-cols-3 items-center border-b pb-2">
-                                                    <span className="text-muted-foreground">IGST</span>
+                                                <div>
+                                                    <div className="grid grid-cols-3 items-center border-b pb-2">
+                                                        <span className="text-muted-foreground">Custom Tax</span>
 
-                                                    <span className="text-muted-foreground flex items-center justify-center">
-                                                        {currencySymbol}
-                                                        {formatCurrency(igstAmount)}
-                                                    </span>
+                                                        <span className="text-muted-foreground flex items-center justify-center">
+                                                            {currencySymbol}
+                                                            {formatCurrency(bill.totalTax)}
+                                                        </span>
 
-                                                    <span className="font-medium text-right">
-                                                        {isTaxable ? (isIGST ? "18" : "0") : "0"}%
-                                                    </span>
+                                                        <span className="font-medium text-right">
+                                                            {customTax}%
+                                                        </span>
+                                                    </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-3 items-center border-b pb-2">
-                                                    <span className="text-muted-foreground">CGST</span>
+                                                : <>
 
-                                                    <span className="text-muted-foreground flex items-center justify-center">
-                                                        {currencySymbol}
-                                                        {formatCurrency(cgstAmount)}
-                                                    </span>
+                                                    <div className="grid grid-cols-3 items-center border-b pb-2">
+                                                        <span className="text-muted-foreground">IGST</span>
 
-                                                    <span className="font-medium text-right">
-                                                        {isTaxable ? (!isIGST ? "9" : "0") : "0"}%
-                                                    </span>
-                                                </div>
+                                                        <span className="text-muted-foreground flex items-center justify-center">
+                                                            {currencySymbol}
+                                                            {formatCurrency(igstAmount)}
+                                                        </span>
 
-                                                <div className="grid grid-cols-3 items-center">
-                                                    <span className="text-muted-foreground">SGST</span>
+                                                        <span className="font-medium text-right">
+                                                            {isTaxable ? (isIGST ? "18" : "0") : "0"}%
+                                                        </span>
+                                                    </div>
 
-                                                    <span className="text-muted-foreground flex items-center justify-center">
-                                                        {currencySymbol}
-                                                        {formatCurrency(sgstAmount)}
-                                                    </span>
+                                                    <div className="grid grid-cols-3 items-center border-b pb-2">
+                                                        <span className="text-muted-foreground">CGST</span>
 
-                                                    <span className="font-medium text-right">
-                                                        {isTaxable ? (!isIGST ? "9" : "0") : "0"}%
-                                                    </span>
-                                                </div>
-                                            </>
-                                        }
+                                                        <span className="text-muted-foreground flex items-center justify-center">
+                                                            {currencySymbol}
+                                                            {formatCurrency(cgstAmount)}
+                                                        </span>
 
+                                                        <span className="font-medium text-right">
+                                                            {isTaxable ? (!isIGST ? "9" : "0") : "0"}%
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-3 items-center">
+                                                        <span className="text-muted-foreground">SGST</span>
+
+                                                        <span className="text-muted-foreground flex items-center justify-center">
+                                                            {currencySymbol}
+                                                            {formatCurrency(sgstAmount)}
+                                                        </span>
+
+                                                        <span className="font-medium text-right">
+                                                            {isTaxable ? (!isIGST ? "9" : "0") : "0"}%
+                                                        </span>
+                                                    </div>
+                                                </>
+                                            }
+
+                                        </div>
                                     </div>
-                                </div>
-                                :
+                                    :
+                                    <div className="mt-10">
+                                        <h1 className="text-xl font-semibold">Tax Not Applicable</h1>
+                                        <p className="text-sm text-muted-foreground">
+                                            This is a non-taxable supply. No GST applied.
+                                        </p>
+                                    </div>
+                                }
                                 <div className="mt-10">
-                                    <h1 className="text-xl font-semibold">Tax Not Applicable</h1>
-                                    <p className="text-sm text-muted-foreground">
-                                        This is a non-taxable supply. No GST applied.
-                                    </p>
-                                </div>
-                            }
-                            <div className="mt-10">
-                                <h1 className="text-xl font-semibold">Billing Details</h1>
+                                    <h1 className="text-xl font-semibold">Billing Details</h1>
 
-                                <div className="mt-4 space-y-3">
-                                    <div className="flex justify-between border-b pb-2">
-                                        <span className="text-muted-foreground">Sub Total</span>
-                                        <span className="font-medium flex items-center">{currencySymbol} {formatCurrency(bill.subTotal)}</span>
-                                    </div>
+                                    <div className="mt-4 space-y-3">
+                                        <div className="flex justify-between border-b pb-2">
+                                            <span className="text-muted-foreground">Sub Total</span>
+                                            <span className="font-medium flex items-center">{currencySymbol} {formatCurrency(bill.subTotal)}</span>
+                                        </div>
 
-                                    <div className="flex justify-between border-b pb-2">
-                                        <span className="text-muted-foreground">Total Tax</span>
-                                        <span className="font-medium flex items-center">{currencySymbol} {formatCurrency(bill.totalTax)}</span>
-                                    </div>
+                                        <div className="flex justify-between border-b pb-2">
+                                            <span className="text-muted-foreground">Total Tax</span>
+                                            <span className="font-medium flex items-center">{currencySymbol} {formatCurrency(bill.totalTax)}</span>
+                                        </div>
 
-                                    <div className="flex justify-between">
-                                        <span className="text-primary">Grand Total</span>
-                                        <span className="font-medium flex items-center">{currencySymbol} {formatCurrency(bill.grandTotal)}</span>
+                                        <div className="flex justify-between">
+                                            <span className="text-primary">Grand Total</span>
+                                            <span className="font-medium flex items-center">{currencySymbol} {formatCurrency(bill.grandTotal)}</span>
+                                        </div>
                                     </div>
                                 </div>
+
                             </div>
 
-                        </div>
-
-                        {/* Clean Footer */}
-                        <div className="p-6 pt-4 flex justify-end gap-3">
-                            <DialogClose asChild>
-                                <Button variant="outline">Cancel</Button>
-                            </DialogClose>
-                            <Button type="submit">Submit</Button>
-                        </div>
-                    </form>
+                            {/* Clean Footer */}
+                            <div className="p-6 pt-4 flex justify-end gap-3">
+                                <DialogClose asChild>
+                                    <Button variant="outline">Cancel</Button>
+                                </DialogClose>
+                                <Button type="submit">Submit</Button>
+                            </div>
+                        </form>
+                    }
                 </DialogContent>
             </Dialog>
         </div >

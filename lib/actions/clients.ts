@@ -1,7 +1,8 @@
 "use server"
 
 import db from "../dbPool";
-import { ClientData, ClientInput, FullClientDetails } from "../types/dataTypes";
+import { getCurrentUserSafe } from "../sessionCheck";
+import { ClientData, ClientFormData, ClientInput, FullClientDetails } from "../types/dataTypes";
 
 export const insertClient = async (data: ClientInput) => {
   try {
@@ -38,7 +39,8 @@ export const insertClient = async (data: ClientInput) => {
         phone,
         assigned_person,
         designation,
-        notes
+        notes,
+        tds
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
@@ -209,3 +211,125 @@ export const fetchFullClientDetails = async (clientId: number) => {
     conn.release();
   }
 };
+
+export const fetchClientDetails = async (clientId: number) => {
+  const conn = await db.getConnection();
+
+  try {
+    const [clientRows]: any = await conn.execute(
+      `SELECT * FROM clients WHERE id = ?`,
+      [clientId]
+    );
+
+    const client = clientRows[0] || null;
+
+    return {
+      success: true,
+      data: client as ClientData,
+      message: "Client details fetched"
+    };
+
+  } catch (error) {
+    console.error("Error fetching client details:", error);
+    throw error;
+  } finally {
+    conn.release();
+  }
+};
+
+export const updateClient = async (clientId: number, data: ClientFormData) => {
+  const conn = await db.getConnection();
+
+  try {
+    const [result]: any = await conn.execute(
+      `
+      UPDATE clients SET
+        company_name = ?,
+        gst_number = ?,
+        tax_number = ?,
+        pan = ?,
+        address = ?,
+        city = ?,
+        state = ?,
+        country = ?,
+        pincode = ?,
+        email = ?,
+        phone = ?,
+        assigned_person = ?,
+        designation = ?,
+        notes = ?,
+      WHERE id = ?
+      `,
+      [
+        data.companyName,
+        data.gstNumber,
+        data.taxNumber,
+        data.pan,
+        data.address,
+        data.city,
+        data.state,
+        data.country,
+        data.pincode,
+        data.email,
+        data.phone,
+        data.assignedPerson,
+        data.designation,
+        data.notes,
+        clientId
+      ]
+    );
+
+    return {
+      success: true,
+      message: "Client updated successfully",
+      affectedRows: result.affectedRows
+    };
+
+  } catch (error) {
+    console.error("Error updating client:", error);
+    throw error;
+  } finally {
+    conn.release();
+  }
+};
+
+export const deleteClient = async (clientId: number) => {
+
+  const session = await getCurrentUserSafe();
+
+  const userId = session?.id;
+
+  if (
+    !userId ||
+    session.iss !== "thaverTechInvoiceGenerator" ||
+    session.role !== "admin"
+  ) {
+    return { success: false, message: "Unauthorized" };
+  }
+
+  const conn = await db.getConnection();
+
+  try {
+
+    const [result]: any = await conn.execute(
+      `DELETE FROM clients WHERE id = ?`,
+      [clientId]
+    );
+
+    if (result.affectedRows === 0) {
+      return { success: false, message: "Client not found" };
+    }
+
+    return {
+      success: true,
+      message: "Client Deleted"
+    }
+
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: "Failed to delete client" };
+  } finally {
+    conn.release()
+  }
+
+}

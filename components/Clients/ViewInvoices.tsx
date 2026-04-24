@@ -10,11 +10,13 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from '../ui/button';
-import { fetchFullClientDetails } from '@/lib/actions/clients';
+import { deleteClient, fetchFullClientDetails } from '@/lib/actions/clients';
 import { FullClientDetails } from '@/lib/types/dataTypes';
 import { DataTable } from '../dataTable';
 import { columns } from './InvoiceTable';
-
+import { Trash } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import AddClientPopup from './addClientPopup';
 
 export const triggerClientRefresh = () => {
     window.dispatchEvent(new Event("client-refresh"));
@@ -23,8 +25,11 @@ export const triggerClientRefresh = () => {
 const ViewInvoices = ({ id }: { id: number }) => {
 
     const [open, setOpen] = useState(false);
+    const [openDelete, setOpenDelete] = useState(false);
     const [refreshToken, setRefreshToken] = useState(0);
     const [data, setData] = useState<FullClientDetails | null>(null);
+
+    const router = useRouter();
 
     useEffect(() => {
         const loadData = async () => {
@@ -35,7 +40,6 @@ const ViewInvoices = ({ id }: { id: number }) => {
                 alert("Failed to fetch")
             }
             setData(res.data)
-            console.log(res.data)
         }
         loadData();
 
@@ -52,6 +56,24 @@ const ViewInvoices = ({ id }: { id: number }) => {
             window.removeEventListener("client-refresh", handleRefresh);
         };
     }, []);
+
+    const handleDelete = async () => {
+
+        try {
+            const res = await deleteClient(id);
+
+            if (!res.success) {
+                alert(res.message)
+                return;
+            }
+            router.refresh()
+            setOpenDelete(false);
+            setOpen(false)
+
+        } catch (error) {
+            console.log(error)
+        }
+    }
 
     return (
         <div>
@@ -84,9 +106,20 @@ const ViewInvoices = ({ id }: { id: number }) => {
                     <main className='px-6'>
 
                         <section>
-                            <h1 className='text-2xl font-bold'>{data?.client?.company_name}
-                                ({data?.client?.gst_number ? <span className="text-blue-700">{data?.client?.gst_number}</span> : data?.client?.tax_number ? <span className="text-green-700">{data?.client?.tax_number}</span> : <span>NA</span>})
-                            </h1>
+                            <div className='flex items-center justify-between mb-4'>
+                                <h1 className='text-2xl font-bold'>{data?.client?.company_name}
+                                    ({data?.client?.gst_number ? <span className="text-blue-700">{data?.client?.gst_number}</span> : data?.client?.tax_number ? <span className="text-green-700">{data?.client?.tax_number}</span> : <span>NA</span>})
+                                </h1>
+
+                                <div className='flex gap-2'>
+                                    <div className='h-10 w-10 flex items-center justify-center border rounded-md hover:bg-accent hover:cursor-pointer hover:shadow-sm'>
+                                        <AddClientPopup id={id} mode='update'/>
+                                    </div>
+                                    <div className='h-10 w-10 mr-4 flex items-center justify-center border rounded-md hover:bg-accent hover:cursor-pointer hover:shadow-sm'>
+                                        <Trash onClick={() => { setOpenDelete(true) }} className='text-red-400' size={24} />
+                                    </div>
+                                </div>
+                            </div>
                             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
 
                                 <div className='p-2 space-y-2'>
@@ -202,6 +235,32 @@ const ViewInvoices = ({ id }: { id: number }) => {
                         </section>
 
                     </main>
+
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={openDelete} onOpenChange={setOpenDelete}>
+
+                <DialogContent
+                    className="
+                        w-full
+                            flex flex-col
+                            p-0
+                            overflow-y-auto
+                            "
+                >
+                    <DialogHeader className="no-print p-6 pb-2">
+                        <div className="flex items-center justify-start gap-2">
+                            <DialogTitle className="text-xl">Delete Client</DialogTitle>
+                        </div>
+                        <DialogDescription>
+                            Do you really want to delete this client?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className='flex w-full items-end justify-end p-4 gap-2'>
+                        <Button type='button' variant={'outline'} onClick={() => setOpenDelete(false)}>Cancel</Button>
+                        <Button type='button' variant={'destructive'} onClick={() => handleDelete()}>Delete</Button>
+                    </div>
 
                 </DialogContent>
             </Dialog>

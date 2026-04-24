@@ -19,7 +19,7 @@ import { fetchBankAccountData, fetchCompanyData } from "@/lib/actions/users";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../Users/roleContext";
 import { triggerClientRefresh } from "../Clients/ViewInvoices";
-import AddInvoicePopup from "./addInvoicePopup";
+import AddInvoicePopup from "./addItemPopup";
 
 export const formatIST = (date?: string | Date) => {
     if (!date) return "";
