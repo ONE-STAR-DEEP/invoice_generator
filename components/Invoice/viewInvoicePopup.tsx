@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog"
 
 import { Button } from "../ui/button";
-import { Eye, Printer } from "lucide-react";
+import { Check, Eye, Printer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchInvoiceById, updateStatus } from "@/lib/actions/invoice";
 import { BankAccount, FetchedInvoice, SellerCompany } from "@/lib/types/dataTypes";
@@ -448,9 +448,10 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                     <DialogHeader className="no-print p-6 pb-2">
                         <div className="flex items-center justify-start gap-2">
                             <DialogTitle className="text-xl">Invoice Details</DialogTitle>
-                            <Printer onClick={handlePrint} size={28} className="text-primary hover:bg-secondary p-1 rounded-sm" />
-                            {(user?.role !== "user" && invoiceData?.status === "pending") && <Button onClick={handleStatusChange}>Mark as Paid</Button>}
+                            <Printer onClick={handlePrint} size={32} className="text-primary hover:bg-secondary p-1 rounded-sm" />
                             <AddInvoicePopup mode="update" id={id} />
+                            <AddInvoicePopup mode="renew" id={id} />
+                            {(user?.role !== "user" && invoiceData?.status === "pending") && <Button onClick={handleStatusChange}><Check/> Mark as Paid</Button>}
                         </div>
                         <DialogDescription>
                             Review complete invoice information including items, tax breakdown, and billing details.
@@ -504,7 +505,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
 
                                     <div className="grid grid-cols-[55%_45%] b-border h-full m-0">
                                         <span className="py-1 font-medium border-r border-primary pl-2 h-full">Invoice<span className="text-xs font-bold">: {invoiceData?.invoiceId}</span></span>
-                                        <span className="py-1 pl-1 h-full">Dated: <span className="text-xs">{formatDateOnly(invoiceData?.createdAt)}</span></span>
+                                        <span className="py-1 pl-1 h-full">Dated: <span className="text-xs">{formatDateOnly(invoiceData?.invoiceDate)}</span></span>
                                     </div>
 
                                     <div className="grid grid-cols-[55%_45%] b-border">

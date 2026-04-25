@@ -25,20 +25,20 @@ export type ClientInput = {
 };
 
 export type ClientFormData = {
-    companyName: string;
-    gstNumber: string;
-    taxNumber: string;
-    pan: string;
-    address: string;
-    city: string;
-    state: string;
-    country: string;
-    pincode: string;
-    email: string;
-    phone: string;
-    assignedPerson: string;
-    designation: string;
-    notes: string;
+  companyName: string;
+  gstNumber: string;
+  taxNumber: string;
+  pan: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+  email: string;
+  phone: string;
+  assignedPerson: string;
+  designation: string;
+  notes: string;
 };
 
 export type ClientData = {
@@ -80,7 +80,7 @@ export type ServiceOptions = {
 
 export type InvoiceItem = {
   id: string
-  service:  { label: string; value: string }  | null
+  service: { label: string; value: string } | null
   serviceId: number | null
   hsn: string
   expiry: Date | null
@@ -365,7 +365,7 @@ export type FullClientDetails = {
 export type InvoiceType = "GST" | "NON_GST" | "NON_TAXABLE" | "CUSTOM_TAX"
 
 export type PurchaseAdjustment = {
-  bill_date?: string | null;
+  bill_date: string | null;
   bill_no?: string;
 
   supplier_name?: string;
@@ -376,17 +376,18 @@ export type PurchaseAdjustment = {
 
   quantity?: number;
   rate?: number;
-  taxable_value?: number;
+
+  taxable_amount: number | null;
+  total_amount: number | null;
 
   cgst?: number;
   sgst?: number;
   igst?: number;
 
-  cgst_amount?: number;
-  sgst_amount?: number;
-  igst_amount?: number;
+  cgst_amount: number | null;
+  sgst_amount: number | null;
+  igst_amount: number | null;
 
-  total_amount: number | null;
 
   place_of_supply?: string;
   itc_eligibility?: "eligible" | "blocked" | "partial";

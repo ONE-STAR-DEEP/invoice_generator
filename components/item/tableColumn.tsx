@@ -1,20 +1,9 @@
 "use client"
 
-import { Invoice } from "@/lib/types/dataTypes"
+import { FetchedAdjustment } from "@/lib/types/dataTypes"
 import { ColumnDef } from "@tanstack/react-table"
-import ViewInvoicePopup from "./viewInvoicePopup"
-import { Button } from "@/components/ui/button"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { EllipsisVertical, X } from "lucide-react"
-
-
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
     Dialog,
     DialogClose,
@@ -24,120 +13,71 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldGroup } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Trash } from "lucide-react"
-import React, { useState } from 'react'
-import { deleteInvoice, updateStatus } from "@/lib/actions/invoice"
-import { useRouter } from "next/navigation"
+import { Button } from "../ui/button";
+import { deleteItem } from "@/lib/actions/taxCredit";
+import { Trash } from "lucide-react";
 
-export const columns: ColumnDef<Invoice>[] = [
+export const columns: ColumnDef<FetchedAdjustment>[] = [
     {
-        accessorKey: "invoice_id",
-        header: "Invoice ID",
-        cell: ({ row }) => (
-            <span className="font-medium">{row.getValue("invoice_id")}</span>
-        ),
+        accessorKey: "bill_no",
+        header: "Bill No",
     },
     {
-        accessorKey: "client_name",
-        header: "Client Name",
-    },
-    {
-        id: "gst_or_tax",
-        header: "GST/TAX No",
-        accessorFn: (row) => row.client_gst_no || row.tax_number,
-        cell: ({ row }) => (
-            <p className="text-xs font-mono">
-                {row.original.client_gst_no && <span className="text-blue-700 font-semibold">{row.original.client_gst_no}</span>}
-                {row.original.tax_number && <span className="text-green-700 font-semibold">{row.original.tax_number}</span>}
-                {!row.original.client_gst_no && !row.original.tax_number && <span>-</span>}
-            </p>
-        ),
-    },
-    {
-        accessorKey: "sub_total",
-        header: "Subtotal",
-        cell: ({ row }) => (
-            <span>{row.original.currency === "INR" ? "₹" : "$"} {Number(row.getValue("sub_total")).toLocaleString()}</span>
-        ),
-    },
-    {
-        accessorKey: "grand_total",
-        header: "Total",
+        accessorKey: "bill_date",
+        header: "Bill Date",
         cell: ({ row }) => {
-            const amount = Number(row.getValue("grand_total"));
-            const status = row.original.status;
-
-            let color = "text-gray-600";
-
-            if (status === "paid") color = "text-green-600";
-            else if (status === "pending") color = "text-orange-500";
-            else if (status === "overdue") color = "text-red-600";
-            else if (status === "cancelled") color = "text-primary";
+            const date = row.getValue("bill_date") as string;
 
             return (
-                <span className={`font-semibold ${color}`}>
-                    {row.original.currency === "INR" ? "₹" : "$"}  {amount.toLocaleString()}
+                <span>
+                    {new Date(date).toLocaleDateString("en-IN")}
                 </span>
             );
         },
     },
     {
-        accessorKey: "total_items",
-        header: () => (
-            <div className="text-center w-full">Total Items</div>
-        ),
-        cell: ({ row }) => (
-            <div className="text-center font-semibold w-full">
-                {Number(row.getValue("total_items")).toLocaleString()}
-            </div>
-        ),
+        accessorKey: "item_name",
+        header: "Item Name",
     },
     {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => {
-            const amount = Number(row.getValue("status"));
-            const status = row.original.status;
-
-            let color = "text-gray-600";
-
-            if (status === "paid") color = "text-green-600";
-            else if (status === "pending") color = "text-orange-500";
-            else if (status === "overdue") color = "text-red-600";
-            else if (status === "cancelled") color = "text-primary";
-
-            return (
-                <span className={`font-semibold ${color}`}>
-                    {row.original.status}
-                </span>
-            );
-        },
+        accessorKey: "hsn_code",
+        header: "HSN Code",
     },
     {
-        accessorKey: "created_at",
-        header: "Invoice Date",
-        cell: ({ row }) => {
-            const date = new Date(row.getValue("created_at"))
-            return <span>{date.toLocaleDateString()}</span>
-        },
+        accessorKey: "supplier_gstin",
+        header: "Supplier GST No",
     },
     {
-        id: "actions",
-        header: () => (
-            <div className="text-center w-18">Actions</div>
-        ),
+        accessorKey: "taxable_amount",
+        header: "Taxable Amount",
+    },
+    {
+        accessorKey: "cgst_amount",
+        header: "CGST Paid",
+    },
+    {
+        accessorKey: "sgst_amount",
+        header: "SGST Paid",
+    },
+    {
+        accessorKey: "igst_amount",
+        header: "IGST Paid",
+    },
+    {
+        accessorKey: "total_amount",
+        header: "Amount",
+    },
+    {
+        accessorKey: "id",
+        header: "Action",
         cell: ({ row }) => {
-            const invoiceId = row.original.id
+            const id = row.getValue("id") as number;
             const [deleteOpen, setDeleteOpen] = useState(false)
-            const [cancelOpen, setCancelOpen] = useState(false)
             const router = useRouter();
 
             const handelDelete = async () => {
                 try {
-                    const res = await deleteInvoice(invoiceId);
+                    const res = await deleteItem(id);
                     if (!res.success) {
                         alert(res.message);
                         return;
@@ -150,48 +90,15 @@ export const columns: ColumnDef<Invoice>[] = [
                 }
             }
 
-            const handelCancel = async () => {
-                try {
-                    const res = await updateStatus(invoiceId, "cancelled");
-                    if (!res.success) {
-                        alert(res.message);
-                        return;
-                    }
-                    router.refresh()
-                } catch (error) {
-                    console.log(error)
-                } finally {
-                    setCancelOpen(false);
-                }
-            }
-
             return (
-                <div className="flex w-20 items-center justify-center">
-                    <ViewInvoicePopup id={invoiceId} />
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="no-print p-2"><EllipsisVertical /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuGroup>
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => setDeleteOpen(true)}>
-                                    <Trash />Delete
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setCancelOpen(true)}>
-                                    <X />Cancel
-                                </DropdownMenuItem>
-                            </DropdownMenuGroup>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
+                <div>
+                    <Button onClick={() => setDeleteOpen(true)}><Trash size={16} /></Button>
                     <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                         <DialogContent className="sm:max-w-sm">
                             <DialogHeader>
-                                <DialogTitle>Delete Invoice</DialogTitle>
+                                <DialogTitle className="text-red-500">Delete Item</DialogTitle>
                                 <DialogDescription>
-                                    Make changes to your profile here. Click save when you&apos;re
-                                    done.
+                                    Deleting this adjustment item will permanently remove it from the monthly invoice and alter the final calculation. This action cannot be undone.
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -199,33 +106,12 @@ export const columns: ColumnDef<Invoice>[] = [
                                 <DialogClose asChild>
                                     <Button variant="outline">Cancel</Button>
                                 </DialogClose>
-                                <Button type="submit" onClick={() => handelDelete()}>Confirm</Button>
+                                <Button type="submit" onClick={() => handelDelete()} variant={"destructive"}>Confirm</Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
-
-
-                    <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-                        <DialogContent className="sm:max-w-sm">
-                            <DialogHeader>
-                                <DialogTitle>Cancel Invoice</DialogTitle>
-                                <DialogDescription>
-                                    Make changes to your profile here. Click save when you&apos;re
-                                    done.
-                                </DialogDescription>
-                            </DialogHeader>
-
-                            <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button variant="outline">Cancel</Button>
-                                </DialogClose>
-                                <Button type="submit" onClick={() => handelCancel()}>Confirm</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-
                 </div>
-            )
+            );
         },
     }
 ]

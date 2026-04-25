@@ -663,6 +663,7 @@ export const fetchAllInvoices = async (
     i.sub_total,
     i.grand_total,
     i.created_at,
+    i.invoice_date,
     i.status,
 
     COUNT(ii.id) AS total_items
@@ -750,6 +751,7 @@ export const fetchPendingInvoices = async (
         i.sub_total,
         i.grand_total,
         i.created_at,
+        i.invoice_date,
         i.status,
 
         COUNT(ii.id) AS total_items
@@ -830,19 +832,28 @@ export const fetchServicesByExpiry = async (
       WHERE ii.expiry IS NOT NULL
         AND ii.expiry BETWEEN UTC_TIMESTAMP() 
         AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY)
+        AND i.status != "cancelled"
+        AND i.renewed != true
 
       ORDER BY ii.expiry ASC
 
       LIMIT ${limit} OFFSET ${offset}
       `);
 
-    const [[{ total }]]: any = await conn.execute(`
+    const [[{ total }]]: any = await conn.execute(
+      `
       SELECT COUNT(*) AS total
       FROM invoice_items ii
-      WHERE ii.expiry IS NOT NULL
-        AND ii.expiry BETWEEN UTC_TIMESTAMP() 
-        AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY)
-    `);
+      JOIN invoice i ON i.id = ii.invoice_id
+
+      WHERE 
+      ii.expiry IS NOT NULL
+      AND ii.expiry BETWEEN UTC_TIMESTAMP() 
+      AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY)
+      AND i.status != 'cancelled'
+      AND i.renewed != true
+    `
+    );
 
     return {
       success: true,
@@ -1034,7 +1045,7 @@ export const fetchStats = async (fy?: string) => {
         SUM(CASE WHEN status = 'pending' THEN grand_total ELSE 0 END) AS pending_amount,
         SUM(CASE WHEN status = 'paid' THEN grand_total ELSE 0 END) AS paid_amount
       FROM invoice
-      WHERE status != "cancelled" AND created_at >= ? AND created_at < ?
+      WHERE status != "cancelled" AND invoice_date >= ? AND invoice_date < ?
       `,
       [startDate, endDate]
     );
@@ -1369,6 +1380,57 @@ export const cancelInvoice = async (invoiceId: number) => {
     return {
       success: true,
       message: "Invoice marked as cancelled",
+    };
+  } catch (error) {
+    console.error("Error updating status:", error);
+    return { success: false, message: "Something went wrong" };
+  }
+};
+
+export const markAsRenewed = async (
+  invoiceId: number
+) => {
+  try {
+    const session = await getCurrentUserSafe();
+    const userId = session?.id;
+
+    if (!userId || session.iss !== "thaverTechInvoiceGenerator") {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!allowedRoles.includes(session.role)) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const [check]: any = await db.query(
+      "SELECT renewed FROM invoice WHERE id = ?",
+      [invoiceId]
+    );
+
+    if (check.length === 0) {
+      return {
+        success: false,
+        message: "No Invoice found"
+      }
+    }
+
+    const status = Boolean(check[0].renewed);
+
+    if (status === true) {
+      return {
+        success: false,
+        message: "This action cannot be performed because the invoice is already marked as Renewed."
+      }
+    }
+
+    const [result] = await db.query(
+      "UPDATE invoice SET renewed = true WHERE id = ?",
+      [invoiceId]
+    );
+
+    return {
+      success: true,
+      message: "Invoice marked as renewed",
     };
   } catch (error) {
     console.error("Error updating status:", error);

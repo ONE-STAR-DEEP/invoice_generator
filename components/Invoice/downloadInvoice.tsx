@@ -54,7 +54,7 @@ const DownloadInvoice = () => {
   );
 
   const handleDownload = async () => {
-    const buffer = await generateExcel();
+    const buffer = await generateExcel(startingMonth, startingYear, endingMonth, endingYear);
 
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -210,7 +210,7 @@ const DownloadInvoice = () => {
                 </Field>
               </FieldGroup>
 
-              <Button className='max-w-40 w-40 ml-auto' onClick={()=>handleDownload()}>Download</Button>
+              <Button className='max-w-40 w-40 ml-auto' onClick={() => handleDownload()}>Download</Button>
             </div>
 
           </DialogContent>

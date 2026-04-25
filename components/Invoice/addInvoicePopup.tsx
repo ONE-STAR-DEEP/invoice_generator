@@ -15,16 +15,17 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 
 import { Button } from "../ui/button";
-import { Edit, Lock, Plus, Trash } from "lucide-react";
+import { Edit, Lock, Plus, RefreshCcw, Trash } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CreatableSelect from "react-select/creatable";
 import { ClientData, InvoiceData, InvoiceItem, InvoiceType, SellerCompany, Service, ServiceOptions } from "@/lib/types/dataTypes";
 import Select from "react-select";
-import { fetchInvoiceById, fetchServices, insertInvoice, updateInvoice } from "@/lib/actions/invoice";
+import { fetchInvoiceById, fetchServices, insertInvoice, markAsRenewed, updateInvoice } from "@/lib/actions/invoice";
 import { useAuth } from "../Users/roleContext";
 import { fetchClients } from "@/lib/actions/clients";
 import { triggerInvoiceRefresh } from "./viewInvoicePopup";
+import { invoiceString } from "@/lib/currentInvoiceNo";
 
 type ClientOption = {
     label: string
@@ -87,7 +88,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo, id,
     companyData?: SellerCompany;
     invoiceNo?: string;
     id?: number;
-    mode: string;
+    mode: "new" | "update" | "renew";
 }) => {
 
     const router = useRouter();
@@ -100,6 +101,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo, id,
     const [clients, setClients] = useState<ClientData[]>(ClientList || [])
     const [services, setServices] = useState<Service[]>(ServicesList || [])
     const [isLocked, setLocked] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     const user = useAuth()
 
@@ -244,40 +246,56 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo, id,
 
     useEffect(() => {
 
-        if (!open) return
-        if (mode === "update" && id) {
+        if (!open || !id) return;
 
-            const loadData = async () => {
-                const res = await fetchInvoiceById(id);
-                const clientData = await fetchClients();
-                const servicesData = await fetchServices();
-                if (!res.success || !clientData.success || !servicesData.success) {
-                    alert(res.message)
-                    return
-                }
-                setClients(clientData.data!)
-                setServices(servicesData.data)
-                const data = res.data
+        const loadData = async () => {
+            const [res, clientData, servicesData, invoiceNo] = await Promise.all([
+                fetchInvoiceById(id),
+                fetchClients(),
+                fetchServices(),
+                invoiceString()
+            ]);
+            if (!res.success || !clientData.success || !servicesData.success || !invoiceNo) {
+                alert(res.message);
+                return;
+            }
 
-                setLocked(data?.invoice.status === "paid" || data?.invoice.status === "cancelled")
+            setClients(clientData.data!);
+            setServices(servicesData.data);
 
-                setData({
-                    clientId: data?.invoice.client.id || 0,
-                    invoiceType: data?.invoice.type || "GST",
-                    currency: data?.invoice.currency || "INR",
-                    dollar_rate: data?.invoice.dollar_rate || 0,
-                    invoiceId: data?.invoice.invoiceId || "",
-                    invoiceDate: data?.invoice.invoiceDate || data?.invoice.createdAt || "",
-                    clientGst: data?.invoice.client.gstNumber || "",
-                    tax_number: data?.invoice.client.taxNumber || "",
-                    PONo: data?.invoice.poNo || "",
-                    PODate: data?.invoice.poDate || null,
-                    reference: data?.invoice.reference || "",
-                })
-                setCustomTax(data?.invoice.customRate || 0)
+            const data = res.data;
 
-                const items = data?.invoice.items
-                items && setItems(
+            const isLocked =
+                data?.invoice.status === "paid" ||
+                data?.invoice.status === "cancelled";
+
+            setLocked(mode === "update" ? isLocked : false);
+
+            const baseData = {
+                clientId: data?.invoice.client.id || 0,
+                invoiceType: data?.invoice.type || "GST",
+                currency: data?.invoice.currency || "INR",
+                dollar_rate: data?.invoice.dollar_rate || 0,
+                invoiceId:
+                    mode === "renew" ? invoiceNo : data?.invoice.invoiceId || "",
+                invoiceDate:
+                    mode === "renew"
+                        ? new Date().toISOString().split("T")[0]
+                        : data?.invoice.invoiceDate || "",
+                clientGst: data?.invoice.client.gstNumber || "",
+                tax_number: data?.invoice.client.taxNumber || "",
+                PONo: data?.invoice.poNo || "",
+                PODate: mode === "renew" ? null : data?.invoice.poDate || null,
+                reference: data?.invoice.reference || "",
+            };
+
+            setData(baseData);
+            setCustomTax(data?.invoice.customRate || 0);
+
+            const items = data?.invoice.items;
+
+            if (items) {
+                setItems(
                     items.map((item: any) => ({
                         id: crypto.randomUUID(),
                         service: item.service
@@ -287,54 +305,87 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo, id,
                             }
                             : null,
                         serviceId: item.serviceId || null,
-                        igst: item.igst ?? null,
-                        cgst: item.cgst ?? null,
-                        sgst: item.sgst ?? null,
+
+                        igst: mode === "renew" ? null : item.igst ?? null,
+                        cgst: mode === "renew" ? null : item.cgst ?? null,
+                        sgst: mode === "renew" ? null : item.sgst ?? null,
+                        expiry: mode === "renew" ? null : item.expiry || null,
+
                         hsn: item.hsn || "",
-                        expiry: item.expiry || null,
                         cost: item.cost?.toString() || "",
-                        naration: item.naration || ""
+                        naration: item.naration || "",
                     }))
                 );
             }
-            loadData();
-        }
+        };
 
+        loadData();
     }, [open, mode, id]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
 
-        if (mode === "new") {
-            const res = await insertInvoice(data, items, customTax);
-            if (!res.success) {
-                alert(res.message)
-                return;
-            }
-        } else if (mode === "update" && id) {
-            const res = await updateInvoice(id, data, items, customTax);
-            if (!res.success) {
-                alert(res.message)
-                return;
-            }
-            triggerInvoiceRefresh();
-        }
+        if (loading) return
+        setLoading(true)
 
-        resetForm();
-        setOpen(false);
-        router.refresh();
+        try {
+
+            if (mode === "new") {
+                const res = await insertInvoice(data, items, customTax);
+                if (!res.success) {
+                    alert(res.message)
+                    return;
+                }
+            } else if (mode === "update" && id) {
+                const res = await updateInvoice(id, data, items, customTax);
+                if (!res.success) {
+                    alert(res.message)
+                    return;
+                }
+                triggerInvoiceRefresh();
+            } else if (mode === "renew" && id) {
+
+                const renewed = await markAsRenewed(id);
+                if (!renewed.success) {
+                    alert(renewed.message)
+                    return;
+                }
+                const res = await insertInvoice(data, items, customTax);
+                if (!res.success) {
+                    alert(res.message)
+                    return;
+                }
+                triggerInvoiceRefresh();
+            }
+
+            resetForm();
+            setOpen(false);
+            router.refresh();
+        } catch (error) {
+            alert("Something went wrong!!!");
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
         <div>
             {user?.role !== "user" &&
                 <>
-                    {mode === "new" ?
+                    {mode === "new" &&
                         <Button type="button" className="p-4" onClick={() => { setOpen(true) }}>
                             <Plus /> Generate Invoice
                         </Button>
-                        :
-                        <Edit size={28} className="text-primary hover:bg-secondary p-1 rounded-sm" onClick={() => { setOpen(true) }} />
+                    }
+
+                    {mode === "update" &&
+                        <Edit size={32} className="text-primary hover:bg-secondary p-1 rounded-sm" onClick={() => { setOpen(true) }} />
+                    }
+
+                    {mode === "renew" &&
+                        <Button type="button" className="p-2 h-8 rounded-sm " onClick={() => { setOpen(true) }}>
+                            <RefreshCcw /> Renew Invoice
+                        </Button>
                     }
                 </>
             }
@@ -379,7 +430,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo, id,
                                 </div>
 
                                 {/* Actions */}
-                                
+
                             </div>
                         </>
                         :

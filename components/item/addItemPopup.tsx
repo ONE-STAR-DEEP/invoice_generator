@@ -19,10 +19,11 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PurchaseAdjustment } from "@/lib/types/dataTypes";
 import { useAuth } from "../Users/roleContext";
+import { itemInsert } from "@/lib/actions/taxCredit";
 
 const AddItemPopup = ({ id, mode }: {
     id?: number;
-    mode: string;
+    mode: "new" | "update" | "renew";
 }) => {
 
     const router = useRouter();
@@ -36,12 +37,16 @@ const AddItemPopup = ({ id, mode }: {
         bill_date: null,
         item_name: "",
         hsn_code: "",
+        taxable_amount: null,
+        cgst_amount: null,
+        sgst_amount: null,
+        igst_amount: null,
         total_amount: null,
-        supplier_gstin: ""
+        supplier_gstin: "",
     }
 
     const [data, setData] = useState<PurchaseAdjustment>(initialData)
-
+    
     const resetForm = () => {
         setData(initialData)
     }
@@ -61,12 +66,26 @@ const AddItemPopup = ({ id, mode }: {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
 
+        if( (data.cgst_amount || data.sgst_amount) && (data.igst_amount)){
+            setData((prev)=>({
+                ...prev,
+                cgst_amount: null,
+                sgst_amount: null,
+                igst_amount: null,
+            }))
+            alert("You can enter CGST and SGST together, or IGST separately — not all three.");
+            return
+        }
+        if((!data.cgst_amount || !data.sgst_amount) && (!data.igst_amount)){
+            alert("Fill proper tax values");
+            return
+        }
         if (mode === "new") {
-            // const res = await insertInvoice(data, items, customTax);
-            // if (!res.success) {
-            //     alert(res.message)
-            //     return;
-            // }
+            const res = await itemInsert(data);
+            if (!res.success) {
+                alert(res.message)
+                return;
+            }
         } else if (mode === "update" && id) {
             // const res = await updateInvoice(id, data, items, customTax);
             // if (!res.success) {
@@ -103,23 +122,23 @@ const AddItemPopup = ({ id, mode }: {
                         w-full
                             max-w-[95vw]
                             sm:max-w-md
-                            lg:max-w-[60vw]
+                            lg:max-w-[50vw]
                             lg:h-[70vh]
                             max-h-[70vh] 
                             flex flex-col
-                            p-0
+                            p-4
                             overflow-y-auto
                             "
                 >
                     <form onSubmit={handleSubmit}>
-                        <DialogHeader className="p-6 pb-2">
+                        <DialogHeader className="p-2 pb-2">
                             <DialogTitle className="text-xl">Item Details</DialogTitle>
                             <DialogDescription>
                                 Enter the details below to insert a new item in the system.
                             </DialogDescription>
                         </DialogHeader>
 
-                        <div className="flex-1 overflow-y-auto flex flex-col justify-between h-full px-6">
+                        <div className="flex-1 overflow-y-auto flex flex-col justify-between px-6">
 
                             <FieldGroup className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
@@ -182,21 +201,77 @@ const AddItemPopup = ({ id, mode }: {
 
                                 <Field>
                                     <Label htmlFor="supplier_gstin">Supplier GST No</Label>
-                                    <Input id="supplier_gstin" name="supplier_gstin" placeholder="22AAAAA0000A1Z5" required
+                                    <Input id="supplier_gstin" name="supplier_gstin" placeholder="22AAAAA0000A1Z5"
                                         value={data.supplier_gstin}
                                         className="h-10"
                                         onChange={(e) =>
                                             setData(prev => ({
                                                 ...prev,
-                                                supplier_gstin: e.target.value
+                                                supplier_gstin: e.target.value.toUpperCase()
                                             }))
                                         }
                                     />
                                 </Field>
 
                                 <Field>
-                                    <Label htmlFor="total_amount">Amount</Label>
-                                    <Input id="total_amount" name="total_amount" placeholder="Amount" required
+                                    <Label htmlFor="taxable_amount">Taxable Amount</Label>
+                                    <Input id="taxable_amount" name="taxable_amount" placeholder="Taxable Amount" required
+                                        value={data.taxable_amount || ""}
+                                        className="h-10"
+                                        onChange={(e) =>
+                                            setData(prev => ({
+                                                ...prev,
+                                                taxable_amount: Number(e.target.value)
+                                            }))
+                                        }
+                                    />
+                                </Field>
+
+                                <Field>
+                                    <Label htmlFor="cgst_amount">CGST Paid</Label>
+                                    <Input id="cgst_amount" name="cgst_amount" placeholder="CGST Paid"
+                                        value={data.cgst_amount || ""}
+                                        className="h-10"
+                                        onChange={(e) =>
+                                            setData(prev => ({
+                                                ...prev,
+                                                cgst_amount: Number(e.target.value)
+                                            }))
+                                        }
+                                    />
+                                </Field>
+
+                                <Field>
+                                    <Label htmlFor="sgst_amount">SGST Paid</Label>
+                                    <Input id="sgst_amount" name="sgst_amount" placeholder="SGST Paid"
+                                        value={data.sgst_amount || ""}
+                                        className="h-10"
+                                        onChange={(e) =>
+                                            setData(prev => ({
+                                                ...prev,
+                                                sgst_amount: Number(e.target.value)
+                                            }))
+                                        }
+                                    />
+                                </Field>
+
+                                <Field>
+                                    <Label htmlFor="igst_amount">IGST Paid</Label>
+                                    <Input id="igst_amount" name="igst_amount" placeholder="IGST Paid"
+                                        value={data.igst_amount || ""}
+                                        className="h-10"
+                                        onChange={(e) =>
+                                            setData(prev => ({
+                                                ...prev,
+                                                igst_amount: Number(e.target.value)
+                                            }))
+                                        }
+                                    />
+                                </Field>
+
+                                <Field>
+                                    <Label htmlFor="total_amount">Total Amount</Label>
+                                    <Input id="total_amount" name="total_amount" placeholder="Total Amount" required
                                         value={data.total_amount || ""}
                                         className="h-10"
                                         onChange={(e) =>
@@ -208,14 +283,14 @@ const AddItemPopup = ({ id, mode }: {
                                     />
                                 </Field>
                             </FieldGroup>
-                        </div>
 
-                        {/* Clean Footer */}
-                        <div className="p-6 flex justify-end gap-3">
-                            <DialogClose asChild>
-                                <Button variant="outline">Cancel</Button>
-                            </DialogClose>
-                            <Button type="submit">Submit</Button>
+                            {/* Clean Footer */}
+                            <div className="mt-4 flex justify-end gap-3">
+                                <DialogClose asChild>
+                                    <Button variant="outline">Cancel</Button>
+                                </DialogClose>
+                                <Button type="submit">Submit</Button>
+                            </div>
                         </div>
                     </form>
                 </DialogContent>

@@ -59,10 +59,10 @@ export const columns: ColumnDef<Invoice>[] = [
         ),
     },
     {
-        accessorKey: "created_at",
+        accessorKey: "invoice_date",
         header: "Invoice Date",
         cell: ({ row }) => {
-            const date = new Date(row.getValue("created_at"))
+            const date = new Date(row.getValue("invoice_date"))
             return <span>{date.toLocaleDateString()}</span>
         },
     },

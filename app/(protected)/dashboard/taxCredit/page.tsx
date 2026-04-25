@@ -1,15 +1,10 @@
 import { DataTable } from '@/components/dataTable';
-import AddInvoicePopup from '@/components/Invoice/addInvoicePopup'
-import DownloadInvoice from '@/components/Invoice/downloadInvoice';
 import Filter from '@/components/Invoice/Filter';
-import { columns } from '@/components/Invoice/tableColumn';
 import AddItemPopup from '@/components/item/addItemPopup';
+import { columns } from '@/components/item/tableColumn';
 import Pagination from '@/components/paginationComponent';
 import SearchComponent from '@/components/SearchComponent'
-import { fetchClients } from '@/lib/actions/clients';
-import { fetchAllInvoices, fetchServices, getNewInvoiceNo } from '@/lib/actions/invoice';
-import { fetchCompanyData } from '@/lib/actions/users';
-import { invoiceString } from '@/lib/currentInvoiceNo';
+import { fetchAllItems } from '@/lib/actions/taxCredit';
 
 type PageProps = {
     searchParams: Promise<{
@@ -30,8 +25,7 @@ const InvoicePage = async ({ searchParams }: PageProps) => {
 
     const status = params?.status
 
-    const allInvoices = await fetchAllInvoices(page, limit, search, status);
-
+    const allInvoices = await fetchAllItems(page, limit, search);
 
     return (
         <div className="flex flex-col flex-1 space-y-6 min-h-0">
@@ -49,17 +43,16 @@ const InvoicePage = async ({ searchParams }: PageProps) => {
             <section className="flex-1 bg-muted/50 border border-border p-4 rounded-2xl overflow-auto min-h-0 flex flex-col space-y-6">
 
                 <div>
-                    <h1 className="text-2xl font-bold">Invoice Records</h1>
+                    <h1 className="text-2xl font-bold">Tax Credit Records</h1>
                     <p className="text-sm text-muted-foreground">
-                        Manage and view all past Invoices
+                        Manage and view all purchased Item
                     </p>
                 </div>
 
                 <div className='flex gap-2 flex-col md:flex-row'>
                     <div className="w-full max-w-60">
-                        <SearchComponent placeholder="Search by Client name/Invoice ID..." />
+                        <SearchComponent placeholder="Search by Item name" />
                     </div>
-                    <Filter />
                 </div>
 
                 {allInvoices?.data &&

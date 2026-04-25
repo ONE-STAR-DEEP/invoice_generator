@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { EllipsisVertical, X } from "lucide-react"
 
-
 import {
     Dialog,
     DialogClose,
@@ -24,11 +23,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldGroup } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Trash } from "lucide-react"
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { deleteInvoice, updateStatus } from "@/lib/actions/invoice"
 import { useRouter } from "next/navigation"
 
@@ -117,10 +113,10 @@ export const columns: ColumnDef<Invoice>[] = [
         },
     },
     {
-        accessorKey: "created_at",
+        accessorKey: "invoice_date",
         header: "Invoice Date",
         cell: ({ row }) => {
-            const date = new Date(row.getValue("created_at"))
+            const date = new Date(row.getValue("invoice_date"))
             return <span>{date.toLocaleDateString()}</span>
         },
     },
@@ -190,8 +186,7 @@ export const columns: ColumnDef<Invoice>[] = [
                             <DialogHeader>
                                 <DialogTitle>Delete Invoice</DialogTitle>
                                 <DialogDescription>
-                                    Make changes to your profile here. Click save when you&apos;re
-                                    done.
+                                    Are you sure you want to delete this invoice? All associated items and billing details will be permanently removed.
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -210,8 +205,7 @@ export const columns: ColumnDef<Invoice>[] = [
                             <DialogHeader>
                                 <DialogTitle>Cancel Invoice</DialogTitle>
                                 <DialogDescription>
-                                    Make changes to your profile here. Click save when you&apos;re
-                                    done.
+                                    Are you sure you want to cancel this invoice? The invoice will be marked as cancelled and excluded from active records.
                                 </DialogDescription>
                             </DialogHeader>
 
