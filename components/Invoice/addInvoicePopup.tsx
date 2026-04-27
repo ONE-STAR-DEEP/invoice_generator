@@ -150,7 +150,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo, id,
             hsn: "",
             expiry: null,
             cost: "",
-            naration: ""
+            narration: ""
         },]
 
 
@@ -171,7 +171,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo, id,
                 hsn: "",
                 expiry: null,
                 cost: "",
-                naration: ""
+                narration: ""
             },
         ])
     }
@@ -313,7 +313,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo, id,
 
                         hsn: item.hsn || "",
                         cost: item.cost?.toString() || "",
-                        naration: item.naration || "",
+                        narration: item.narration || "",
                     }))
                 );
             }
@@ -799,16 +799,16 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo, id,
                                         </Field>
 
                                         <Field className="col-span-3">
-                                            <Label>Naration</Label>
+                                            <Label>Narration</Label>
                                             <Input
-                                                value={item.naration}
-                                                placeholder="Naration about the service"
+                                                value={item.narration}
+                                                placeholder="Narration about the service"
                                                 className="h-10"
                                                 onChange={(e) =>
                                                     setItems((prev) =>
                                                         prev.map((it) =>
                                                             it.id === item.id
-                                                                ? { ...it, naration: e.target.value }
+                                                                ? { ...it, narration: e.target.value }
                                                                 : it
                                                         )
                                                     )
@@ -836,7 +836,7 @@ const AddInvoicePopup = ({ ClientList, ServicesList, companyData, invoiceNo, id,
                                                 hsn: "",
                                                 expiry: null,
                                                 cost: "",
-                                                naration: ""
+                                                narration: ""
                                             },
                                         ])
                                     }

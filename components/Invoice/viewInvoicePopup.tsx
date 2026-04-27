@@ -566,7 +566,7 @@ const ViewInvoicePopup = ({ id }: { id: number }) => {
                                                 <td className="border-r border-primary px-3 text-left">
                                                     <div className="flex flex-col">
                                                         <span className=" text-xs font-bold">{item.service}</span>
-                                                        <span className="pl-1 text-xs font-light line-clamp-3 wrap-break-word">{item.naration}</span>
+                                                        <span className="pl-1 text-xs font-light line-clamp-3 wrap-break-word">{item.narration}</span>
                                                     </div>
                                                 </td>
                                                 <td className="border-r border-primary p-1">{item.hsn}</td>
