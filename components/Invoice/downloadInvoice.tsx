@@ -60,11 +60,27 @@ const DownloadInvoice = () => {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
 
+    const months = [
+      "",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ]
+
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = "invoice-report.xlsx";
+    a.download = `Invoice-${months[startingMonth]}-${startingYear}-${months[endingMonth]}-${endingYear}.xlsx`;
     a.click();
 
     URL.revokeObjectURL(url);

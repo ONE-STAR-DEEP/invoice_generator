@@ -297,9 +297,9 @@ export async function generateExcel(
       { formula: `N(J${endRow + 1})` },
       { formula: `N(K${endRow + 1})` }
     ]);
-    
+
     currentRow++;
-    
+
     const adjTotalRowIndex = adjTotalRow.number; // after adding total row
     // Input GST
     sheet.addRow([
@@ -316,14 +316,95 @@ export async function generateExcel(
     // Net GST
     const netRow = sheet.addRow([
       "", "", "", "", "", "",
-      "Net GST Payable",
+      "Net GST",
       "",
       { formula: `N(I${endRow + 1}) - N(I${adjEndRow + 1})` },
       { formula: `N(J${endRow + 1}) - N(J${adjEndRow + 1})` },
       { formula: `N(K${endRow + 1}) - N(K${adjEndRow + 1})` }
     ]);
 
-    netRow.font = { bold: true };
+    // Net GST
+    // const netRow = sheet.addRow([
+    //   "", "", "", "", "", "",
+    //   "Net GST",
+    //   "",
+    //   { formula: `N(I${endRow + 1}) - N(I${adjEndRow + 1})` },
+    //   { formula: `N(J${endRow + 1}) - N(J${adjEndRow + 1})` },
+    //   { formula: `N(K${endRow + 1}) - N(K${adjEndRow + 1})` }
+    // ]);
+
+    // netRow.font = { bold: true };
+
+    currentRow++;
+
+    // ==============================
+    // ✅ Layer 1: Direct Set-off
+    // ==============================
+    const directRow = sheet.addRow([
+      "", "", "", "", "", "",
+      "After Direct Set-off",
+      "",
+      { formula: `MAX(0, I${netRow.number})` },
+      { formula: `MAX(0, J${netRow.number})` },
+      { formula: `MAX(0, K${netRow.number})` }
+    ]);
+
+    currentRow++;
+
+    // ==============================
+    // ✅ Layer 2: IGST Adjustment
+    // ==============================
+    const finalRow = sheet.addRow([
+      "", "", "", "", "", "",
+      "Final GST Payable",
+      "",
+
+      // CGST
+      {
+        formula: `
+      MAX(0,
+        I${directRow.number}
+        - MAX(0, -K${netRow.number})
+      )
+    `
+      },
+
+      // SGST
+      {
+        formula: `
+      MAX(0,
+        J${directRow.number}
+        - MAX(0,
+          MAX(0, -K${netRow.number}) - I${directRow.number}
+        )
+      )
+    `
+      },
+
+      // IGST
+      {
+        formula: `MAX(0, K${netRow.number})`
+      }
+    ]);
+
+    finalRow.font = { bold: true };
+
+    sheet.addRow([
+      "", "", "", "", "", "",
+      "Remaining ITC (Carry Forward)",
+      "",
+      0, // CGST (rare / usually 0)
+      0, // SGST (rare / usually 0)
+      {
+        formula: `
+      MAX(0,
+        MAX(0, -K${netRow.number})
+        - I${directRow.number}
+        - J${directRow.number}
+      )
+    `
+      }
+    ]);
 
     currentRow += 5;
   }
@@ -336,7 +417,7 @@ export async function generateExcel(
     { width: 20 },
     { width: 30 },
     { width: 20 },
-    { width: 25 },
+    { width: 30 },
     { width: 15 },
     { width: 15 },
     { width: 15 },
