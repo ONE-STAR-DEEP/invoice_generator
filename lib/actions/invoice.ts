@@ -244,7 +244,7 @@ export const insertInvoice = async (
         itemCGST,
         itemSGST,
         item.expiry,
-        item.naration
+        item.narration
       ]);
     }
 
@@ -349,7 +349,7 @@ export const insertInvoice = async (
         cgst,
         sgst,
         expiry,
-        naration
+        narration
       ) VALUES ?
       `,
       [finalValues]
@@ -510,7 +510,7 @@ export const updateInvoice = async (
         itemCGST,
         itemSGST,
         item.expiry,
-        item.naration
+        item.narration
       ]);
     }
 
@@ -588,7 +588,7 @@ export const updateInvoice = async (
         cgst,
         sgst,
         expiry,
-        naration
+        narration
       ) VALUES ?
       `,
       [finalValues]
@@ -924,7 +924,7 @@ export const fetchInvoiceById = async (invoiceId: number) => {
           'id', ii.id,
           'serviceId', s.id,
           'service', s.name,
-          'naration', ii.naration,
+          'narration', ii.narration,
           'hsn', s.hsn_code,
           'cost', ii.cost,
           'igst', ii.igst,

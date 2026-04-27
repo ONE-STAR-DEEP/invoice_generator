@@ -85,7 +85,7 @@ export type InvoiceItem = {
   hsn: string
   expiry: Date | null
   cost: string
-  naration: string
+  narration: string
 }
 
 export type InvoiceData = {
@@ -196,7 +196,7 @@ export type FetchedInvoiceItem = {
   serviceId: number;
 
   service: string;
-  naration: string;
+  narration: string;
   hsn: string;
 
   cost: number;
