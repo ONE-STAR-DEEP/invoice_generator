@@ -168,9 +168,9 @@ export async function generateExcel(
         right: { style: "thin" },
       };
     });
-    
+
     if (!data.length) continue;
-    
+
     // ➖ spacing
     currentRow += 2;
 
@@ -311,6 +311,17 @@ export async function generateExcel(
       igst: round(Math.max(0, netGST.igst))
     };
 
+    const carryForward = {
+      cgst: 0,
+      sgst: 0,
+      igst: round(
+        Math.max(
+          0,
+          Math.max(0, -netGST.igst) - direct.cgst - direct.sgst
+        )
+      )
+    };
+
     // 🔥 Total Row
     const adjTotalRow = sheet.addRow([
       "", "", "", "", "", "", "Total",
@@ -352,7 +363,18 @@ export async function generateExcel(
 
     sheet.addRow(["", "", "", "", "", "", "Net GST", "", netGST.cgst, netGST.sgst, netGST.igst]);
 
-    sheet.addRow(["", "", "", "", "", "", "Final GST Payable", "", finalGST.cgst, finalGST.sgst, finalGST.igst]);
+    const netPayable = sheet.addRow(["", "", "", "", "", "", "Final GST Payable", "", finalGST.cgst, finalGST.sgst, finalGST.igst]);
+    netPayable.font = { bold: true };
+
+
+    sheet.addRow([
+      "", "", "", "", "", "",
+      "Remaining ITC (Carry Forward)",
+      "",
+      carryForward.cgst,
+      carryForward.sgst,
+      carryForward.igst
+    ]);
 
     currentRow += 5;
   }
