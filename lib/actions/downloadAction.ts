@@ -118,16 +118,31 @@ export async function generateExcel(
 
     const endRow = currentRow - 1;
 
+    const invoiceTotals = data.reduce((acc, row) => {
+      acc.taxable += parseFloat(row.sub_total) || 0;
+      acc.cgst += parseFloat(row.cgst) || 0;
+      acc.sgst += parseFloat(row.sgst) || 0;
+      acc.igst += parseFloat(row.igst) || 0;
+      acc.total += parseFloat(row.grand_total) || 0;
+      return acc;
+    }, {
+      taxable: 0,
+      cgst: 0,
+      sgst: 0,
+      igst: 0,
+      total: 0
+    });
+
     // 🔥 Monthly total (very useful)
     const totalRow = sheet.addRow([
       "", "", "", "", "", "",
       "Total",
-      { formula: `SUM(H${startRow}:H${endRow})` },
-      { formula: `SUM(I${startRow}:I${endRow})` },
-      { formula: `SUM(J${startRow}:J${endRow})` },
-      { formula: `SUM(K${startRow}:K${endRow})` },
-      { formula: `SUM(L${startRow}:L${endRow})` }
-    ])
+      invoiceTotals.taxable,
+      invoiceTotals.cgst,
+      invoiceTotals.sgst,
+      invoiceTotals.igst,
+      invoiceTotals.total
+    ]);
     totalRow.font = { bold: true };
 
     totalRow.eachCell((cell, colNumber) => {
@@ -322,18 +337,6 @@ export async function generateExcel(
       { formula: `N(J${endRow + 1}) - N(J${adjEndRow + 1})` },
       { formula: `N(K${endRow + 1}) - N(K${adjEndRow + 1})` }
     ]);
-
-    // Net GST
-    // const netRow = sheet.addRow([
-    //   "", "", "", "", "", "",
-    //   "Net GST",
-    //   "",
-    //   { formula: `N(I${endRow + 1}) - N(I${adjEndRow + 1})` },
-    //   { formula: `N(J${endRow + 1}) - N(J${adjEndRow + 1})` },
-    //   { formula: `N(K${endRow + 1}) - N(K${adjEndRow + 1})` }
-    // ]);
-
-    // netRow.font = { bold: true };
 
     currentRow++;
 
