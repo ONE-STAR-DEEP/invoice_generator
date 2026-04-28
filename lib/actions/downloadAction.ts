@@ -3,6 +3,8 @@
 import ExcelJS from "exceljs";
 import db from "../dbPool";
 
+const round = (n: number) => Math.round(n * 100) / 100;
+
 export async function generateExcel(
   startingMonth: number,
   startingYear: number,
@@ -96,8 +98,6 @@ export async function generateExcel(
       };
     });
 
-    const startRow = currentRow;
-
     data.forEach((row: any) => {
       sheet.addRow([
         "",
@@ -107,16 +107,14 @@ export async function generateExcel(
         row.client_name,
         row.client_gst_no,
         row.address,
-        Number(row.sub_total),
-        Number(row.cgst),
-        Number(row.sgst),
-        Number(row.igst),
-        Number(row.grand_total),
+        parseFloat(row.sub_total) || 0,
+        parseFloat(row.cgst) || 0,
+        parseFloat(row.sgst) || 0,
+        parseFloat(row.igst) || 0,
+        parseFloat(row.grand_total) || 0,
       ]);
       currentRow++;
     });
-
-    const endRow = currentRow - 1;
 
     const invoiceTotals = data.reduce((acc, row) => {
       acc.taxable += parseFloat(row.sub_total) || 0;
@@ -137,11 +135,11 @@ export async function generateExcel(
     const totalRow = sheet.addRow([
       "", "", "", "", "", "",
       "Total",
-      invoiceTotals.taxable,
-      invoiceTotals.cgst,
-      invoiceTotals.sgst,
-      invoiceTotals.igst,
-      invoiceTotals.total
+      round(invoiceTotals.taxable),
+      round(invoiceTotals.cgst),
+      round(invoiceTotals.sgst),
+      round(invoiceTotals.igst),
+      round(invoiceTotals.total)
     ]);
     totalRow.font = { bold: true };
 
@@ -170,12 +168,11 @@ export async function generateExcel(
         right: { style: "thin" },
       };
     });
-
-    currentRow++;
-
+    
+    if (!data.length) continue;
+    
     // ➖ spacing
     currentRow += 2;
-
 
     const monthDate = new Date(data[0].invoice_date);
 
@@ -199,8 +196,6 @@ export async function generateExcel(
       `,
       [monthDate.getMonth() + 1, monthDate.getFullYear()]
     );
-
-    const hasItems = items.length > 0;
 
     // 🟨 Adjustment Title
     sheet.getCell(`C${currentRow}`).value = "Adjustments (Tax Reduction)";
@@ -245,8 +240,6 @@ export async function generateExcel(
 
     currentRow++;
 
-    const adjStartRow = currentRow;
-
     // 🧾 Data rows
     items.forEach((item: any) => {
       sheet.addRow([
@@ -257,25 +250,75 @@ export async function generateExcel(
         item.item_name,
         item.hsn_code,
         item.supplier_gstin,
-        Number(item.taxable_amount),
-        Number(item.cgst_amount),
-        Number(item.sgst_amount),
-        Number(item.igst_amount),
-        Number(item.total_amount),
+        parseFloat(item.taxable_amount) || 0,
+        parseFloat(item.cgst_amount) || 0,
+        parseFloat(item.sgst_amount) || 0,
+        parseFloat(item.igst_amount) || 0,
+        parseFloat(item.total_amount) || 0,
       ]);
       currentRow++;
     });
 
-    const adjEndRow = currentRow - 1;
+
+    const adjTotals = items.reduce((
+      acc: { taxable: number; cgst: number; sgst: number; igst: number; total: number },
+      item: any
+    ) => {
+      acc.taxable += parseFloat(item.taxable_amount) || 0;
+      acc.cgst += parseFloat(item.cgst_amount) || 0;
+      acc.sgst += parseFloat(item.sgst_amount) || 0;
+      acc.igst += parseFloat(item.igst_amount) || 0;
+      acc.total += parseFloat(item.total_amount) || 0;
+      return acc;
+    }, {
+      taxable: 0,
+      cgst: 0,
+      sgst: 0,
+      igst: 0,
+      total: 0
+    });
+
+    const outputGST = {
+      cgst: round(invoiceTotals.cgst),
+      sgst: round(invoiceTotals.sgst),
+      igst: round(invoiceTotals.igst)
+    };
+
+    const inputGST = {
+      cgst: round(adjTotals.cgst),
+      sgst: round(adjTotals.sgst),
+      igst: round(adjTotals.igst)
+    };
+
+    const netGST = {
+      cgst: round(outputGST.cgst - inputGST.cgst),
+      sgst: round(outputGST.sgst - inputGST.sgst),
+      igst: round(outputGST.igst - inputGST.igst)
+    };
+
+    const direct = {
+      cgst: round(Math.max(0, netGST.cgst)),
+      sgst: round(Math.max(0, netGST.sgst)),
+      igst: round(Math.max(0, netGST.igst))
+    };
+
+    const finalGST = {
+      cgst: round(Math.max(0, direct.cgst - Math.max(0, -netGST.igst))),
+      sgst: round(Math.max(
+        0,
+        direct.sgst - Math.max(0, Math.max(0, -netGST.igst) - direct.cgst))
+      ),
+      igst: round(Math.max(0, netGST.igst))
+    };
 
     // 🔥 Total Row
     const adjTotalRow = sheet.addRow([
       "", "", "", "", "", "", "Total",
-      hasItems ? { formula: `SUM(H${adjStartRow}:H${adjEndRow})` } : 0,
-      hasItems ? { formula: `SUM(I${adjStartRow}:I${adjEndRow})` } : 0,
-      hasItems ? { formula: `SUM(J${adjStartRow}:J${adjEndRow})` } : 0,
-      hasItems ? { formula: `SUM(K${adjStartRow}:K${adjEndRow})` } : 0,
-      hasItems ? { formula: `SUM(L${adjStartRow}:L${adjEndRow})` } : 0
+      round(adjTotals.taxable),
+      round(adjTotals.cgst),
+      round(adjTotals.sgst),
+      round(adjTotals.igst),
+      round(adjTotals.total),
     ]);
 
     adjTotalRow.eachCell((cell, colNumber) => {
@@ -303,111 +346,13 @@ export async function generateExcel(
     sheet.getCell(`C${currentRow}`).font = { bold: true, size: 13 };
     currentRow++;
 
-    // Output GST
-    sheet.addRow([
-      "", "", "", "", "", "",
-      "Output GST",
-      "",
-      { formula: `N(I${endRow + 1})` },
-      { formula: `N(J${endRow + 1})` },
-      { formula: `N(K${endRow + 1})` }
-    ]);
+    sheet.addRow(["", "", "", "", "", "", "Output GST", "", outputGST.cgst, outputGST.sgst, outputGST.igst]);
 
-    currentRow++;
+    sheet.addRow(["", "", "", "", "", "", "Input GST", "", inputGST.cgst, inputGST.sgst, inputGST.igst]);
 
-    const adjTotalRowIndex = adjTotalRow.number; // after adding total row
-    // Input GST
-    sheet.addRow([
-      "", "", "", "", "", "",
-      "Input GST (ITC)",
-      "",
-      hasItems ? { formula: `N(I${adjTotalRowIndex})` } : 0,
-      hasItems ? { formula: `N(J${adjTotalRowIndex})` } : 0,
-      hasItems ? { formula: `N(K${adjTotalRowIndex})` } : 0,
-    ]);
+    sheet.addRow(["", "", "", "", "", "", "Net GST", "", netGST.cgst, netGST.sgst, netGST.igst]);
 
-    currentRow++;
-
-    // Net GST
-    const netRow = sheet.addRow([
-      "", "", "", "", "", "",
-      "Net GST",
-      "",
-      { formula: `N(I${endRow + 1}) - N(I${adjEndRow + 1})` },
-      { formula: `N(J${endRow + 1}) - N(J${adjEndRow + 1})` },
-      { formula: `N(K${endRow + 1}) - N(K${adjEndRow + 1})` }
-    ]);
-
-    currentRow++;
-
-    // ==============================
-    // ✅ Layer 1: Direct Set-off
-    // ==============================
-    const directRow = sheet.addRow([
-      "", "", "", "", "", "",
-      "After Direct Set-off",
-      "",
-      { formula: `MAX(0, I${netRow.number})` },
-      { formula: `MAX(0, J${netRow.number})` },
-      { formula: `MAX(0, K${netRow.number})` }
-    ]);
-
-    currentRow++;
-
-    // ==============================
-    // ✅ Layer 2: IGST Adjustment
-    // ==============================
-    const finalRow = sheet.addRow([
-      "", "", "", "", "", "",
-      "Final GST Payable",
-      "",
-
-      // CGST
-      {
-        formula: `
-      MAX(0,
-        I${directRow.number}
-        - MAX(0, -K${netRow.number})
-      )
-    `
-      },
-
-      // SGST
-      {
-        formula: `
-      MAX(0,
-        J${directRow.number}
-        - MAX(0,
-          MAX(0, -K${netRow.number}) - I${directRow.number}
-        )
-      )
-    `
-      },
-
-      // IGST
-      {
-        formula: `MAX(0, K${netRow.number})`
-      }
-    ]);
-
-    finalRow.font = { bold: true };
-
-    sheet.addRow([
-      "", "", "", "", "", "",
-      "Remaining ITC (Carry Forward)",
-      "",
-      0, // CGST (rare / usually 0)
-      0, // SGST (rare / usually 0)
-      {
-        formula: `
-      MAX(0,
-        MAX(0, -K${netRow.number})
-        - I${directRow.number}
-        - J${directRow.number}
-      )
-    `
-      }
-    ]);
+    sheet.addRow(["", "", "", "", "", "", "Final GST Payable", "", finalGST.cgst, finalGST.sgst, finalGST.igst]);
 
     currentRow += 5;
   }
@@ -427,8 +372,6 @@ export async function generateExcel(
     { width: 15 },
     { width: 15 },
   ];
-
-  workbook.calcProperties.fullCalcOnLoad = true;
 
   const buffer = await workbook.xlsx.writeBuffer();
 
