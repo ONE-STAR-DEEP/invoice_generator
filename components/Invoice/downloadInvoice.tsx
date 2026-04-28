@@ -21,7 +21,7 @@ import {
 
 import { Button } from "../ui/button";
 import { Field, FieldGroup } from '../ui/field';
-import { Calendar } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { Label } from '../ui/label';
 import { generateExcel } from '@/lib/actions/downloadAction';
 
@@ -47,7 +47,6 @@ const DownloadInvoice = () => {
     }
   }, [startingYear, startingMonth, endingYear, endingMonth]);
 
-  const currentYear = new Date().getFullYear();
   const years = Array.from(
     { length: 2099 - 2026 + 1 },
     (_, i) => 2026 + i
@@ -89,7 +88,7 @@ const DownloadInvoice = () => {
   return (
 
     <div>
-      <Button type="button" onClick={() => setOpen(true)} className='flex gap-2'> <Calendar /> Download Invoice</Button>
+      <Button type="button" onClick={() => setOpen(true)} className='flex gap-2'> <Download /> Download GST</Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <form>
           <DialogContent className="
@@ -104,7 +103,7 @@ const DownloadInvoice = () => {
                           overflow-y-auto
                           ">
             <DialogHeader>
-              <DialogTitle className='text-xl font-semibold'>Download Monthly Invoice</DialogTitle>
+              <DialogTitle className='text-xl font-semibold'>Download Monthly GST Bill</DialogTitle>
               <DialogDescription className='m-0'>
                 Select a date range to filter results
               </DialogDescription>

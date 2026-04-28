@@ -1,10 +1,37 @@
 "use server"
 
+import { error } from "console";
 import db from "../dbPool";
 import { getCurrentUserSafe } from "../sessionCheck";
 import { FetchedAdjustment, PurchaseAdjustment } from "../types/dataTypes";
 
 const allowedRoles = ["admin", "accounts"];
+
+
+async function uploadFile(file: File) {
+  if (!file) {
+    throw new Error("No file provided")
+  }
+
+  const apiForm = new FormData()
+  apiForm.append("file", file)
+
+  const res = await fetch("https://accounts.thavertech.com/upload", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer thaverTech",
+    },
+    body: apiForm,
+  })
+
+  const data = await res.json()
+
+  if (!res.ok) {
+    throw new Error(data.error || "Upload failed")
+  }
+
+  return data.url
+}
 
 export const itemInsert = async (data: PurchaseAdjustment) => {
     try {
@@ -17,7 +44,13 @@ export const itemInsert = async (data: PurchaseAdjustment) => {
                 message: "You can enter CGST and SGST together, or IGST separately — not all three."
             }
         }
-
+        if(!data.bill_file){
+            return {
+                success: "False",
+                message: "file not found"
+            }
+        }
+        const fileUrl = await uploadFile(data.bill_file);
         const {
             bill_date,
             bill_no,
@@ -28,7 +61,8 @@ export const itemInsert = async (data: PurchaseAdjustment) => {
             cgst_amount,
             sgst_amount,
             igst_amount,
-            total_amount
+            total_amount,
+            bill_file
         } = data;
 
         const [result] = await db.execute(
@@ -43,9 +77,10 @@ export const itemInsert = async (data: PurchaseAdjustment) => {
             cgst_amount,
             sgst_amount,
             igst_amount,
-            total_amount
+            total_amount,
+            bill_file
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
             [
                 bill_date,
@@ -57,7 +92,8 @@ export const itemInsert = async (data: PurchaseAdjustment) => {
                 cgst_amount || 0,
                 sgst_amount || 0,
                 igst_amount || 0,
-                total_amount
+                total_amount,
+                fileUrl
             ]
         );
 

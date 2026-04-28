@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 import { Button } from "../ui/button";
-import { Edit, Lock, Plus } from "lucide-react";
+import { Camera, Edit, Lock, Plus } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PurchaseAdjustment } from "@/lib/types/dataTypes";
@@ -35,6 +35,7 @@ const AddItemPopup = ({ id, mode }: {
     const initialData: PurchaseAdjustment = {
         bill_no: '',
         bill_date: null,
+        bill_file: null,
         item_name: "",
         hsn_code: "",
         taxable_amount: null,
@@ -46,7 +47,7 @@ const AddItemPopup = ({ id, mode }: {
     }
 
     const [data, setData] = useState<PurchaseAdjustment>(initialData)
-    
+
     const resetForm = () => {
         setData(initialData)
     }
@@ -66,8 +67,8 @@ const AddItemPopup = ({ id, mode }: {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
 
-        if( (data.cgst_amount || data.sgst_amount) && (data.igst_amount)){
-            setData((prev)=>({
+        if ((data.cgst_amount || data.sgst_amount) && (data.igst_amount)) {
+            setData((prev) => ({
                 ...prev,
                 cgst_amount: null,
                 sgst_amount: null,
@@ -76,7 +77,7 @@ const AddItemPopup = ({ id, mode }: {
             alert("You can enter CGST and SGST together, or IGST separately — not all three.");
             return
         }
-        if((!data.cgst_amount || !data.sgst_amount) && (!data.igst_amount)){
+        if ((!data.cgst_amount || !data.sgst_amount) && (!data.igst_amount)) {
             alert("Fill proper tax values");
             return
         }
@@ -144,16 +145,18 @@ const AddItemPopup = ({ id, mode }: {
 
                                 <Field>
                                     <Label htmlFor="bill_no">Bill No</Label>
-                                    <Input id="bill_no" name="bill_no" placeholder="Bill No/Invoice ID"
-                                        value={data.bill_no}
-                                        className="h-10 mb-0 pb-0"
-                                        onChange={(e) =>
-                                            setData(prev => ({
-                                                ...prev,
-                                                bill_no: e.target.value
-                                            }))
-                                        }
-                                    />
+                                    <div className="flex">
+                                        <Input id="bill_no" name="bill_no" placeholder="Bill No/Invoice ID"
+                                            value={data.bill_no}
+                                            className="h-10 mb-0 pb-0"
+                                            onChange={(e) =>
+                                                setData(prev => ({
+                                                    ...prev,
+                                                    bill_no: e.target.value
+                                                }))
+                                            }
+                                        />
+                                    </div>
                                 </Field>
 
                                 <Field>
@@ -168,6 +171,22 @@ const AddItemPopup = ({ id, mode }: {
                                             }))
                                         }
                                     />
+                                </Field>
+
+                                <Field>
+                                    <Label htmlFor="bill_copy">Bill Copy</Label>
+                                    <div className="flex">
+                                        <Input id="bill_copy" name="bill_copy" placeholder="Bill Copy"
+                                            type="file"
+                                            className="h-10 mb-0 p-2"
+                                            onChange={(e) =>
+                                                setData(prev => ({
+                                                    ...prev,
+                                                    bill_file: e.target.files?.[0] ?? null
+                                                }))
+                                            }
+                                        />
+                                    </div>
                                 </Field>
 
                                 <Field>

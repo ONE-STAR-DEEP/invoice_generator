@@ -367,6 +367,7 @@ export type InvoiceType = "GST" | "NON_GST" | "NON_TAXABLE" | "CUSTOM_TAX"
 export type PurchaseAdjustment = {
   bill_date: string | null;
   bill_no?: string;
+  bill_file?: File | null;
 
   supplier_name?: string;
   supplier_gstin: string;

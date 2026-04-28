@@ -58,6 +58,7 @@ export async function generateExcel(
     const headerRow = sheet.addRow([
       "",
       "",
+      "S.no",
       "Bill Date",
       "Invoice NO",
       "Client",
@@ -97,11 +98,12 @@ export async function generateExcel(
         right: { style: "thin" },
       };
     });
-
+    let sno = 1;
     data.forEach((row: any) => {
       sheet.addRow([
         "",
         "",
+        sno++,
         new Date(row.invoice_date).toISOString().split("T")[0],
         row.invoice_id,
         row.client_name,
@@ -133,7 +135,7 @@ export async function generateExcel(
 
     // 🔥 Monthly total (very useful)
     const totalRow = sheet.addRow([
-      "", "", "", "", "", "",
+      "", "", "", "", "", "", "",
       "Total",
       round(invoiceTotals.taxable),
       round(invoiceTotals.cgst),
@@ -172,7 +174,7 @@ export async function generateExcel(
     if (!data.length) continue;
 
     // ➖ spacing
-    currentRow += 2;
+    currentRow += 4;
 
     const monthDate = new Date(data[0].invoice_date);
 
@@ -198,7 +200,7 @@ export async function generateExcel(
     );
 
     // 🟨 Adjustment Title
-    sheet.getCell(`C${currentRow}`).value = "Adjustments (Tax Reduction)";
+    sheet.getCell(`C${currentRow}`).value = "Input (Tax Reduction)";
     sheet.getCell(`C${currentRow}`).font = { bold: true, size: 12 };
     currentRow++;
 
@@ -206,6 +208,7 @@ export async function generateExcel(
     const adjHeader = sheet.addRow([
       "",
       "",
+      "S.no",
       "Bill Date",
       "Bill No",
       "Item",
@@ -241,10 +244,12 @@ export async function generateExcel(
     currentRow++;
 
     // 🧾 Data rows
+    sno = 1;
     items.forEach((item: any) => {
       sheet.addRow([
         "",
         "",
+        sno++,
         new Date(item.bill_date).toISOString().split("T")[0],
         item.bill_no,
         item.item_name,
@@ -325,7 +330,7 @@ export async function generateExcel(
 
     // 🔥 Total Row
     const adjTotalRow = sheet.addRow([
-      "", "", "", "", "", "", "Total",
+      "", "", "", "", "", "", "", "Total",
       round(adjTotals.taxable),
       round(adjTotals.cgst),
       round(adjTotals.sgst),
@@ -354,24 +359,28 @@ export async function generateExcel(
     });
 
     // 🧾 GST Summary
-    sheet.getCell(`C${currentRow}`).value = "GST Calculation";
-    sheet.getCell(`C${currentRow}`).font = { bold: true, size: 13 };
+    sheet.mergeCells(`C${currentRow}:D${currentRow}`);
+
+    const cell = sheet.getCell(`C${currentRow}`);
+    cell.value = "GST Calculation";
+    cell.font = { bold: true, size: 13 };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
     currentRow++;
 
-    sheet.addRow(["", "", "", "", "", "", "Output GST", "", outputGST.cgst, outputGST.sgst, outputGST.igst]);
+    sheet.addRow(["", "", "", "", "", "", "", "Output GST", "", outputGST.cgst, outputGST.sgst, outputGST.igst]);
 
-    sheet.addRow(["", "", "", "", "", "", "Input GST", "", inputGST.cgst, inputGST.sgst, inputGST.igst]);
+    sheet.addRow(["", "", "", "", "", "", "", "Input GST", "", inputGST.cgst, inputGST.sgst, inputGST.igst]);
 
-    sheet.addRow(["", "", "", "", "", "", "ITC Set-off", "", direct.cgst, direct.sgst, direct.igst]);
+    sheet.addRow(["", "", "", "", "", "", "", "ITC Set-off", "", direct.cgst, direct.sgst, direct.igst]);
 
-    sheet.addRow(["", "", "", "", "", "", "GST Before Set-off", "", netGST.cgst, netGST.sgst, netGST.igst]);
+    sheet.addRow(["", "", "", "", "", "", "", "GST Before Set-off", "", netGST.cgst, netGST.sgst, netGST.igst]);
 
-    const netPayable = sheet.addRow(["", "", "", "", "", "", "Final GST Payable", "", finalGST.cgst, finalGST.sgst, finalGST.igst]);
+    const netPayable = sheet.addRow(["", "", "", "", "", "", "", "Final GST Payable", "", finalGST.cgst, finalGST.sgst, finalGST.igst]);
     netPayable.font = { bold: true };
 
 
     sheet.addRow([
-      "", "", "", "", "", "",
+      "", "", "", "", "", "", "",
       "Remaining ITC (Carry Forward)",
       "",
       carryForward.cgst,
@@ -379,18 +388,20 @@ export async function generateExcel(
       carryForward.igst
     ]);
 
-    currentRow += 5;
+    currentRow += 10;
   }
 
-  // ✅ Column widths (huge UX improvement)
+  // ✅ Column widths
   sheet.columns = [
     { width: 15 },
     { width: 15 },
+    { width: 10 },
     { width: 20 },
     { width: 20 },
     { width: 30 },
     { width: 20 },
     { width: 30 },
+    { width: 15 },
     { width: 15 },
     { width: 15 },
     { width: 15 },
