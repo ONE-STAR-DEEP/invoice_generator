@@ -296,6 +296,7 @@ export async function generateExcel(
       igst: round(outputGST.igst - inputGST.igst)
     };
 
+
     const direct = {
       cgst: round(Math.max(0, netGST.cgst)),
       sgst: round(Math.max(0, netGST.sgst)),
@@ -361,7 +362,9 @@ export async function generateExcel(
 
     sheet.addRow(["", "", "", "", "", "", "Input GST", "", inputGST.cgst, inputGST.sgst, inputGST.igst]);
 
-    sheet.addRow(["", "", "", "", "", "", "Net GST", "", netGST.cgst, netGST.sgst, netGST.igst]);
+    sheet.addRow(["", "", "", "", "", "", "ITC Set-off", "", direct.cgst, direct.sgst, direct.igst]);
+
+    sheet.addRow(["", "", "", "", "", "", "GST Before Set-off", "", netGST.cgst, netGST.sgst, netGST.igst]);
 
     const netPayable = sheet.addRow(["", "", "", "", "", "", "Final GST Payable", "", finalGST.cgst, finalGST.sgst, finalGST.igst]);
     netPayable.font = { bold: true };
