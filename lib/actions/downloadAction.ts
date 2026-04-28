@@ -425,6 +425,8 @@ export async function generateExcel(
     { width: 15 },
   ];
 
+  workbook.calcProperties.fullCalcOnLoad = true;
+
   const buffer = await workbook.xlsx.writeBuffer();
 
   return buffer;
