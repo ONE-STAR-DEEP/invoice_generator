@@ -505,7 +505,7 @@ export const updateProformaInvoice = async (
 
     await conn.execute(
       `
-      UPDATE invoice SET
+      UPDATE proforma_invoice SET
         currency = ?,
         dollar_rate = ?,
         sub_total = ?,
