@@ -183,6 +183,7 @@ export async function generateExcel(
       SELECT 
       bill_date,
       bill_no,
+      bill_file,
       item_name,
       hsn_code,
       supplier_gstin,
@@ -219,6 +220,7 @@ export async function generateExcel(
       "SGST",
       "IGST",
       "Total Amount",
+      "View Bill"
     ]);
 
     adjHeader.eachCell((cell, colNumber) => {
@@ -246,7 +248,7 @@ export async function generateExcel(
     // 🧾 Data rows
     sno = 1;
     items.forEach((item: any) => {
-      sheet.addRow([
+      const row = sheet.addRow([
         "",
         "",
         sno++,
@@ -260,9 +262,27 @@ export async function generateExcel(
         parseFloat(item.sgst_amount) || 0,
         parseFloat(item.igst_amount) || 0,
         parseFloat(item.total_amount) || 0,
-      ]);
-      currentRow++;
-    });
+        "" // placeholder for bill column
+      ])
+
+      const billCell = row.getCell(14)
+
+      if (item.bill_file) {
+        billCell.value = {
+          text: "View Bill",
+          hyperlink: item.bill_file
+        }
+
+        billCell.font = {
+          color: { argb: "FF0000FF" },
+          underline: false
+        }
+      } else {
+        billCell.value = "No File"
+      }
+
+      currentRow++
+    })
 
 
     const adjTotals = items.reduce((

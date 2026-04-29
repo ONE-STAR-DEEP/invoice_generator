@@ -13,9 +13,17 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Button } from "../ui/button";
 import { deleteItem } from "@/lib/actions/taxCredit";
-import { Trash } from "lucide-react";
+import { EllipsisVertical, Eye, Trash } from "lucide-react";
 
 export const columns: ColumnDef<FetchedAdjustment>[] = [
     {
@@ -92,7 +100,22 @@ export const columns: ColumnDef<FetchedAdjustment>[] = [
 
             return (
                 <div>
-                    <Button onClick={() => setDeleteOpen(true)}><Trash size={16} /></Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="no-print p-2"><EllipsisVertical /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuGroup>
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => setDeleteOpen(true)}>
+                                    <Trash />Delete
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => window.open(row.original.bill_file, "_blank")}>
+                                    <Eye />Bill Copy
+                                </DropdownMenuItem>
+                            </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                         <DialogContent className="sm:max-w-sm">
                             <DialogHeader>

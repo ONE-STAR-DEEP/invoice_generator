@@ -9,47 +9,69 @@ const allowedRoles = ["admin", "accounts"];
 
 
 async function uploadFile(file: File) {
-  if (!file) {
-    throw new Error("No file provided")
-  }
+    if (!file) {
+        throw new Error("No file provided")
+    }
 
-  const apiForm = new FormData()
-  apiForm.append("file", file)
+    const apiForm = new FormData()
+    apiForm.append("file", file)
 
-  const res = await fetch("https://accounts.thavertech.com/upload", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer thaverTech",
-    },
-    body: apiForm,
-  })
+    const res = await fetch("https://accounts.thavertech.com/upload", {
+        method: "POST",
+        headers: {
+            Authorization: "Bearer thaverTech",
+        },
+        body: apiForm,
+    })
 
-  const data = await res.json()
+    const data = await res.json()
 
-  if (!res.ok) {
-    throw new Error(data.error || "Upload failed")
-  }
+    if (!res.ok) {
+        throw new Error(data.error || "Upload failed")
+    }
 
-  return data.url
+    return data.url
 }
 
 export const itemInsert = async (data: PurchaseAdjustment) => {
     try {
+        const hasCGST = !!data.cgst_amount
+        const hasSGST = !!data.sgst_amount
+        const hasIGST = !!data.igst_amount
 
-        console.log(data)
-        if( (data.cgst_amount || data.sgst_amount) && (data.igst_amount) ){
+        // Mixing IGST with CGST/SGST
+        if ((hasCGST || hasSGST) && hasIGST) {
             alert("Cannot fill all CGST, SGST and IGST together");
             return {
                 success: false,
                 message: "You can enter CGST and SGST together, or IGST separately — not all three."
             }
         }
-        if(!data.bill_file){
+
+        // Partial CGST/SGST
+        if (hasCGST !== hasSGST) {
             return {
-                success: "False",
+                success: false,
+                message: "CGST and SGST must be entered together."
+            }
+        }
+
+        // Nothing filled
+        if (!hasIGST && !(hasCGST && hasSGST)) {
+            return {
+                success: false,
+                message: "Enter either IGST or both CGST and SGST."
+            }
+        }
+
+
+        if (!data.bill_file) {
+            return {
+                success: false,
                 message: "file not found"
             }
         }
+
         const fileUrl = await uploadFile(data.bill_file);
         const {
             bill_date,
@@ -141,6 +163,7 @@ export const fetchAllItems = async (
             id,
             bill_date,
             bill_no,
+            bill_file,
             item_name,
             hsn_code,
             supplier_gstin,
@@ -195,34 +218,34 @@ export const fetchAllItems = async (
 };
 
 export const deleteItem = async (itemId: number) => {
-  const conn = await db.getConnection();
+    const conn = await db.getConnection();
 
-  try {
-    const session = await getCurrentUserSafe();
-    const userId = session?.id;
+    try {
+        const session = await getCurrentUserSafe();
+        const userId = session?.id;
 
-    if (!userId || session.iss !== "thaverTechInvoiceGenerator") {
-      return { success: false, message: "Unauthorized" };
+        if (!userId || session.iss !== "thaverTechInvoiceGenerator") {
+            return { success: false, message: "Unauthorized" };
+        }
+
+        if (!allowedRoles.includes(session.role)) {
+            return { success: false, message: "Unauthorized" };
+        }
+
+        await conn.query(
+            "DELETE FROM purchase_adjustments WHERE id = ?",
+            [itemId]
+        );
+
+        return {
+            success: true,
+            message: "Item deleted",
+        };
+    } catch (error) {
+        console.error("Error deleting item:", error);
+
+        return { success: false, message: "Delete failed" };
+    } finally {
+        conn.release();
     }
-
-    if (!allowedRoles.includes(session.role)) {
-      return { success: false, message: "Unauthorized" };
-    }
-
-    await conn.query(
-      "DELETE FROM purchase_adjustments WHERE id = ?",
-      [itemId]
-    );
-
-    return {
-      success: true,
-      message: "Item deleted",
-    };
-  } catch (error) {
-    console.error("Error deleting item:", error);
-
-    return { success: false, message: "Delete failed" };
-  } finally {
-    conn.release();
-  }
 };

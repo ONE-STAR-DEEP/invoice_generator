@@ -400,6 +400,8 @@ export type FetchedAdjustment = {
   bill_date: string;
   bill_no: string;
 
+  bill_file: string;
+
   supplier_name: string;
   supplier_gstin: string;
 

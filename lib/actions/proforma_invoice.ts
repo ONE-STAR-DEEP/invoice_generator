@@ -23,27 +23,6 @@ export interface ClientReport extends RowDataPacket {
   pending_invoices: number;
 }
 
-const getFinancialYear = () => {
-  const now = new Date();
-
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1; // 1–12
-
-  let startYear;
-  let endYear;
-
-  if (month >= 4) {
-    // April or later
-    startYear = year;
-    endYear = year + 1;
-  } else {
-    // Jan–March
-    startYear = year - 1;
-    endYear = year;
-  }
-
-  return `${String(startYear).slice(-2)}-${String(endYear).slice(-2)}`;
-};
 
 const allowedRoles = ["admin", "accounts"];
 
@@ -73,12 +52,12 @@ export const fetchServices = async () => {
   }
 }
 
-export const getNewInvoiceNo = async () => {
+export const getNewProformaInvoiceNo = async () => {
 
   const conn = await db.getConnection()
   try {
     const [rows]: any = await conn.execute(`
-      SELECT name, invoice_no FROM sequence where name="invoice"
+      SELECT name, invoice_no FROM sequence where name="proforma"
     `)
 
     const currentNo = rows[0].invoice_no;
@@ -102,7 +81,7 @@ export const getNewInvoiceNo = async () => {
   }
 }
 
-export const insertInvoice = async (
+export const insertProformaInvoice = async (
   data: InvoiceData,
   items: InvoiceItem[],
   custom_tax: number
@@ -129,7 +108,7 @@ export const insertInvoice = async (
     await conn.beginTransaction();
 
     const [rows]: any = await conn.execute(`
-      SELECT invoice_no FROM sequence where name="invoice" FOR UPDATE
+      SELECT invoice_no FROM sequence where name="proforma" FOR UPDATE
     `);
 
     const currentNo = rows[0]?.invoice_no;
@@ -140,12 +119,12 @@ export const insertInvoice = async (
 
     const paddedNo = String(currentNo).padStart(4, "0");
 
-    const invoiceString = `TTPL/${getFinancialYear()}/${paddedNo}`;
+    const invoiceString = `TTPL/PFI/${paddedNo}`;
 
     const nextNo = currentNo + 1;
 
     await conn.execute(`
-      UPDATE sequence SET invoice_no = ? WHERE name = 'invoice'
+      UPDATE sequence SET invoice_no = ? WHERE name = 'proforma'
     `, [nextNo]);
 
     const isGST = data.invoiceType === "GST";
@@ -260,7 +239,7 @@ export const insertInvoice = async (
 
     const [invoiceResult]: any = await conn.execute(
       `
-        INSERT INTO invoice (
+        INSERT INTO proforma_invoice (
         client_id,
         client_name,
         client_gst_no,
@@ -341,7 +320,7 @@ export const insertInvoice = async (
 
     await conn.query(
       `
-      INSERT INTO invoice_items (
+      INSERT INTO proforma_items (
         invoice_id,
         service_id,
         cost,
@@ -359,7 +338,7 @@ export const insertInvoice = async (
 
     return {
       success: true,
-      message: "Invoice Generated",
+      message: "Proforma Invoice Generated",
     };
 
   } catch (error) {
@@ -375,7 +354,7 @@ export const insertInvoice = async (
   }
 };
 
-export const updateInvoice = async (
+export const updateProformaInvoice = async (
   invoiceId: number,
   data: InvoiceData,
   items: InvoiceItem[],
@@ -432,7 +411,7 @@ export const updateInvoice = async (
     }
 
     const [taxes]: any = await conn.execute(
-      `SELECT cgst_rate, sgst_rate, igst_rate, custom_rate FROM invoice WHERE id = ?`,
+      `SELECT cgst_rate, sgst_rate, igst_rate, custom_rate FROM proforma_invoice WHERE id = ?`,
       [invoiceId]
     );
 
@@ -569,7 +548,7 @@ export const updateInvoice = async (
     );
 
     await conn.execute(
-      `DELETE FROM invoice_items WHERE invoice_id = ?`,
+      `DELETE FROM proforma_items WHERE invoice_id = ?`,
       [invoiceId]
     );
 
@@ -580,7 +559,7 @@ export const updateInvoice = async (
 
     await conn.query(
       `
-      INSERT INTO invoice_items (
+      INSERT INTO proforma_items (
         invoice_id,
         service_id,
         cost,
@@ -598,7 +577,7 @@ export const updateInvoice = async (
 
     return {
       success: true,
-      message: "Invoice Updated",
+      message: "Proforma Invoice Updated",
     };
 
   } catch (error) {
@@ -614,7 +593,7 @@ export const updateInvoice = async (
   }
 };
 
-export const fetchAllInvoices = async (
+export const fetchAllProformaInvoices = async (
   page: number = 1,
   limit: number = 10,
   search?: string,
@@ -646,7 +625,7 @@ export const fetchAllInvoices = async (
 
     const [rows]: any = await conn.execute(
       `
-  SELECT 
+    SELECT 
     i.id,
     i.invoice_id,
     i.client_id,
@@ -668,9 +647,9 @@ export const fetchAllInvoices = async (
 
     COUNT(ii.id) AS total_items
 
-  FROM invoice i
+  FROM proforma_invoice i
 
-  LEFT JOIN invoice_items ii 
+  LEFT JOIN proforma_items ii 
     ON ii.invoice_id = i.id
 
   ${where}
@@ -684,7 +663,7 @@ export const fetchAllInvoices = async (
     );
 
     const [countResult]: any = await conn.execute(`
-      SELECT COUNT(*) as total FROM invoice
+      SELECT COUNT(*) as total FROM proforma_invoice
     `);
 
     const total = countResult[0].total;
@@ -711,171 +690,7 @@ export const fetchAllInvoices = async (
   }
 };
 
-export const fetchPendingInvoices = async (
-  page = 1,
-  limit = 10,
-  search?: string
-) => {
-  const conn = await db.getConnection();
-
-  try {
-    const offset = (page - 1) * limit;
-
-    const safeLimit = Math.min(50, Number(limit) || 10);
-    const safeOffset = Math.max(0, Number(offset) || 0);
-
-    const searchTerm = search ? `%${search}%` : `%`;
-
-    let where = `
-      WHERE i.status = 'pending'
-      AND (
-        i.client_name LIKE ?
-        OR i.invoice_id LIKE ?
-      )
-    `;
-
-    const params: any[] = [searchTerm, searchTerm];
-
-    const [rows]: any = await conn.execute(
-      `
-      SELECT 
-        i.id,
-        i.invoice_id,
-        i.client_id,
-        i.client_name,
-        i.client_gst_no,
-        i.client_email,
-        i.client_phone,
-        i.client_city,
-        i.client_state,
-        i.sub_total,
-        i.grand_total,
-        i.created_at,
-        i.invoice_date,
-        i.status,
-
-        COUNT(ii.id) AS total_items
-
-      FROM invoice i
-
-      LEFT JOIN invoice_items ii 
-        ON ii.invoice_id = i.id
-
-      ${where}
-
-      GROUP BY i.id
-
-      ORDER BY i.created_at ASC
-
-      LIMIT ${safeLimit} OFFSET ${safeOffset}
-      `,
-      params
-    );
-
-    const [[{ total }]]: any = await conn.execute(
-      `
-      SELECT COUNT(DISTINCT i.id) AS total
-      FROM invoice i
-      LEFT JOIN invoice_items ii ON ii.invoice_id = i.id
-      ${where}
-      `,
-      params
-    );
-
-    return {
-      success: true,
-      data: rows,
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / safeLimit),
-    };
-  } catch (error) {
-    console.error(error);
-    return {
-      success: false,
-      message: "Fetch failed",
-    };
-  } finally {
-    conn.release();
-  }
-};
-
-export const fetchServicesByExpiry = async (
-  page = 1,
-  limit = 10
-) => {
-  const conn = await db.getConnection();
-
-  try {
-    const offset = (page - 1) * limit;
-
-    const [rows] = await conn.execute(
-      `
-      SELECT 
-        ii.id,
-        i.invoice_id,
-        i.id AS invoiceId,
-        ii.service_id,
-        ii.cost,
-        ii.expiry,
-        ii.status,
-
-        s.name,
-        s.hsn_code
-
-      FROM invoice_items ii
-
-      JOIN services s ON s.id = ii.service_id
-      JOIN invoice i ON i.id = ii.invoice_id
-
-      WHERE ii.expiry IS NOT NULL
-        AND ii.expiry BETWEEN UTC_TIMESTAMP() 
-        AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY)
-        AND i.status != "cancelled"
-        AND i.renewed != true
-
-      ORDER BY ii.expiry ASC
-
-      LIMIT ${limit} OFFSET ${offset}
-      `);
-
-    const [[{ total }]]: any = await conn.execute(
-      `
-      SELECT COUNT(*) AS total
-      FROM invoice_items ii
-      JOIN invoice i ON i.id = ii.invoice_id
-
-      WHERE 
-      ii.expiry IS NOT NULL
-      AND ii.expiry BETWEEN UTC_TIMESTAMP() 
-      AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY)
-      AND i.status != 'cancelled'
-      AND i.renewed != true
-    `
-    );
-
-    return {
-      success: true,
-      data: rows as InvoiceServiceRow[],
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    };
-  } catch (error) {
-    console.error("Error fetching services by expiry:", error);
-
-    return {
-      success: false,
-      message: "Failed to fetch services",
-    };
-  } finally {
-    conn.release();
-  }
-};
-
-export const fetchInvoiceById = async (invoiceId: number) => {
+export const fetchProformaInvoiceById = async (invoiceId: number) => {
   const conn = await db.getConnection();
 
   try {
@@ -933,14 +748,14 @@ export const fetchInvoiceById = async (invoiceId: number) => {
           'expiry', ii.expiry
         )
       )
-      FROM invoice_items ii
+      FROM proforma_items ii
       LEFT JOIN services s ON s.id = ii.service_id
       WHERE ii.invoice_id = i.id
     )
 
   ) AS invoice
 
-  FROM invoice i
+  FROM proforma_invoice i
   WHERE i.id = ?;
   `,
       [invoiceId]
@@ -1065,195 +880,7 @@ export const fetchStats = async (fy?: string) => {
   }
 };
 
-export const fetchClientReport = async (
-  page: number = 1,
-  pageSize: number = 10
-) => {
-  const conn = await db.getConnection();
-
-  const offset = (page - 1) * pageSize;
-
-  try {
-    // Paginated data
-    const [rows] = await conn.query<ClientReport[]>(
-      `
-      SELECT 
-  client_id,
-  client_name,
-
-  COALESCE(ROUND(SUM(
-    CASE 
-      WHEN currency = 'USD' THEN grand_total * dollar_rate
-      ELSE grand_total
-    END
-  ), 2), 0) AS total_amount,
-
-  COALESCE(ROUND(SUM(
-    CASE 
-      WHEN status = 'paid' THEN 
-        CASE 
-          WHEN currency = 'USD' THEN grand_total * dollar_rate
-          ELSE grand_total
-        END
-      ELSE 0 
-    END
-  ), 2), 0) AS paid_amount,
-
-  COALESCE(ROUND(SUM(
-    CASE 
-      WHEN status = 'pending' THEN 
-        CASE 
-          WHEN currency = 'USD' THEN grand_total * dollar_rate
-          ELSE grand_total
-        END
-      ELSE 0 
-    END
-  ), 2), 0) AS pending_amount,
-
-  COUNT(*) AS total_invoices,
-
-  SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS paid_invoices,
-  SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_invoices
-
-FROM invoice
-
-GROUP BY client_id, client_name
-
-ORDER BY total_amount DESC
-LIMIT ? OFFSET ?
-      `,
-      [pageSize, offset]
-    );
-
-    // Total unique clients
-    const [countResult]: any = await conn.query(`
-      SELECT COUNT(DISTINCT client_id) AS total
-      FROM invoice
-    `);
-
-    const total = countResult[0].total;
-    const totalPages = Math.ceil(total / pageSize);
-
-    return {
-      success: true,
-      data: rows,
-      pagination: {
-        page,
-        pageSize,
-        total,
-        totalPages, // ✅ explicitly returned
-      },
-    };
-  } catch (error) {
-    console.error("Error fetching client report:", error);
-    return {
-      success: false,
-      data: [],
-      pagination: null,
-    };
-  } finally {
-    conn.release();
-  }
-};
-
-export const fetchClientReportByState = async (
-  state?: string,
-  page: number = 1,
-  pageSize: number = 10
-) => {
-  const conn = await db.getConnection();
-
-  const offset = (page - 1) * pageSize;
-
-  try {
-    let query = `
-      SELECT 
-  i.client_id,
-  i.client_name,
-  i.client_city,
-  i.client_state,
-
-  COALESCE(ROUND(SUM(
-    CASE 
-      WHEN i.currency = 'USD' THEN i.grand_total * i.dollar_rate
-      ELSE i.grand_total
-    END
-  ), 2), 0) AS total_amount,
-  COUNT(*) AS total_invoices,
-  SUM(ii.item_count) AS total_items
-
-FROM invoice i
-
-LEFT JOIN (
-  SELECT invoice_id, COUNT(*) AS item_count
-  FROM invoice_items
-  GROUP BY invoice_id
-) ii ON ii.invoice_id = i.id
-    `;
-
-    const params: any[] = [];
-
-    if (state) {
-      query += ` WHERE i.client_state = ? `;
-      params.push(state);
-    }
-
-    query += `
-      GROUP BY 
-        i.client_id,
-        i.client_name,
-        i.client_city,
-        i.client_state
-
-      ORDER BY total_amount DESC
-      LIMIT ? OFFSET ?
-    `;
-
-
-    params.push(pageSize, offset);
-
-    const [rows] = await conn.query(query, params);
-
-    let countQuery = `
-      SELECT COUNT(DISTINCT i.client_id) AS total
-      FROM invoice i
-    `;
-
-    const countParams: any[] = [];
-
-    if (state) {
-      countQuery += ` WHERE i.client_state = ? `;
-      countParams.push(state);
-    }
-
-    const [countResult]: any = await conn.query(countQuery, countParams);
-
-    const total = countResult[0].total;
-    const totalPages = Math.ceil(total / pageSize);
-
-    return {
-      success: true,
-      data: rows as ClientLocationReport[],
-      pagination: {
-        page,
-        pageSize,
-        total,
-        totalPages,
-      },
-    };
-  } catch (error) {
-    console.error("Error fetching client report by state:", error);
-    return {
-      success: false,
-      data: [],
-      pagination: null,
-    };
-  } finally {
-    conn.release();
-  }
-};
-
-export const deleteInvoice = async (invoiceId: number) => {
+export const deleteProformaInvoice = async (invoiceId: number) => {
   const conn = await db.getConnection();
 
   try {
@@ -1271,7 +898,7 @@ export const deleteInvoice = async (invoiceId: number) => {
     await conn.beginTransaction();
 
     const [check]: any = await db.query(
-      "SELECT status FROM invoice WHERE id = ?",
+      "SELECT status FROM proforma_invoice WHERE id = ?",
       [invoiceId]
     );
 
@@ -1292,7 +919,7 @@ export const deleteInvoice = async (invoiceId: number) => {
     }
 
     const [rows]: any = await conn.execute(
-      `SELECT id, invoice_id FROM invoice ORDER BY id DESC LIMIT 1 FOR UPDATE`
+      `SELECT id, invoice_id FROM proforma_invoice ORDER BY id DESC LIMIT 1 FOR UPDATE`
     );
 
     if (!rows.length) {
@@ -1306,7 +933,7 @@ export const deleteInvoice = async (invoiceId: number) => {
     const invoiceSequenceNo = Number(rows[0].invoice_id.split("/")[2]);
 
     const [sequence]: any = await conn.execute(
-      `SELECT invoice_no FROM sequence WHERE name="invoice" FOR UPDATE`
+      `SELECT invoice_no FROM sequence WHERE name="proforma" FOR UPDATE`
     );
 
     const currentSequenceNo = sequence[0].invoice_no;
@@ -1330,17 +957,17 @@ export const deleteInvoice = async (invoiceId: number) => {
     }
 
     await conn.query(
-      "DELETE FROM invoice_items WHERE invoice_id = ?",
+      "DELETE FROM proforma_items WHERE invoice_id = ?",
       [invoiceId]
     );
 
     await conn.query(
-      "DELETE FROM invoice WHERE id = ?",
+      "DELETE FROM proforma_invoice WHERE id = ?",
       [invoiceId]
     );
 
     await conn.query(
-      `UPDATE sequence SET invoice_no = invoice_no - 1 WHERE name = 'invoice'`
+      `UPDATE sequence SET invoice_no = invoice_no - 1 WHERE name = 'proforma'`
     );
 
     await conn.commit();
@@ -1359,7 +986,7 @@ export const deleteInvoice = async (invoiceId: number) => {
   }
 };
 
-export const cancelInvoice = async (invoiceId: number) => {
+export const cancelProformaInvoice = async (invoiceId: number) => {
   try {
     const session = await getCurrentUserSafe();
     const userId = session?.id;
@@ -1373,64 +1000,13 @@ export const cancelInvoice = async (invoiceId: number) => {
     }
 
     const [result] = await db.query(
-      "UPDATE invoice SET status = ? WHERE id = ?",
+      "UPDATE proforma_invoice SET status = ? WHERE id = ?",
       ["cancelled", invoiceId]
     );
 
     return {
       success: true,
       message: "Invoice marked as cancelled",
-    };
-  } catch (error) {
-    console.error("Error updating status:", error);
-    return { success: false, message: "Something went wrong" };
-  }
-};
-
-export const markAsRenewed = async (
-  invoiceId: number
-) => {
-  try {
-    const session = await getCurrentUserSafe();
-    const userId = session?.id;
-
-    if (!userId || session.iss !== "thaverTechInvoiceGenerator") {
-      return { success: false, message: "Unauthorized" };
-    }
-
-    if (!allowedRoles.includes(session.role)) {
-      return { success: false, message: "Unauthorized" };
-    }
-
-    const [check]: any = await db.query(
-      "SELECT renewed FROM invoice WHERE id = ?",
-      [invoiceId]
-    );
-
-    if (check.length === 0) {
-      return {
-        success: false,
-        message: "No Invoice found"
-      }
-    }
-
-    const status = Boolean(check[0].renewed);
-
-    if (status === true) {
-      return {
-        success: false,
-        message: "This action cannot be performed because the invoice is already marked as Renewed."
-      }
-    }
-
-    const [result] = await db.query(
-      "UPDATE invoice SET renewed = true WHERE id = ?",
-      [invoiceId]
-    );
-
-    return {
-      success: true,
-      message: "Invoice marked as renewed",
     };
   } catch (error) {
     console.error("Error updating status:", error);

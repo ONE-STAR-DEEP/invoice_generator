@@ -144,6 +144,15 @@ export function AppSidebar() {
                             </SidebarMenuItem>
 
                             <SidebarMenuItem>
+                                <Link href="/dashboard/proforma-invoice">
+                                    <SidebarMenuButton>
+                                        <FileText className="w-4 h-4" />
+                                        Pro Forma Invoice
+                                    </SidebarMenuButton>
+                                </Link>
+                            </SidebarMenuItem>
+
+                            <SidebarMenuItem>
                                 <Link href="/dashboard/taxCredit">
                                     <SidebarMenuButton>
                                         <NotebookPen className="w-4 h-4" />
