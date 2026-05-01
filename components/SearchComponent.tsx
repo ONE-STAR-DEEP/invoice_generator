@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 
 const SearchComponent = (
-    { placeholder, prefix="" }: { placeholder: string, prefix: string }
+    { placeholder, prefix="" }: { placeholder: string, prefix?: string }
 ) => {
 
     const router = useRouter()
