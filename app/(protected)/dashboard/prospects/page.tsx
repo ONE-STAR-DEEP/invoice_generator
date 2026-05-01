@@ -48,7 +48,7 @@ const Prospects = async ({ searchParams }: PageProps) => {
         </div>
 
         <div className="max-w-60">
-          <SearchComponent placeholder="Search client by name..." />
+          <SearchComponent placeholder="Search Prospect by name..." />
         </div>
         {data?.data &&
           <>
