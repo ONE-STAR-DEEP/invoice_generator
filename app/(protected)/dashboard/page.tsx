@@ -104,10 +104,10 @@ export default async function Dashboard({
           className="rounded-xl border bg-card text-card-foreground p-5 shadow-sm"
         >
           <p className="flex justify-between  text-sm text-muted-foreground">
-            Pending Amount <Clock className="text-emerald-500" size={20} />
+            Current Outstanding<Clock className="text-emerald-500" size={20} />
           </p>
           <p className="text-2xl font-semibold mt-2">
-            ₹{statData.pendingAmount}
+            ₹{statData.currentOutstanding}
           </p>
         </div>
 
@@ -115,10 +115,10 @@ export default async function Dashboard({
           className="rounded-xl border bg-card text-card-foreground p-5 shadow-sm"
         >
           <p className="flex justify-between text-sm text-muted-foreground">
-            Paid Amount <CircleCheckBig className="text-green-700" size={20} />
+            Previous Outstanding<CircleCheckBig className="text-green-700" size={20} />
           </p>
           <p className="text-2xl font-semibold mt-2">
-            ₹{statData.paidAmount}
+            ₹{statData.previousOutstanding}
           </p>
         </div>
 
@@ -154,7 +154,7 @@ export default async function Dashboard({
         {/* Top Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b">
           <h2 className="text-lg font-semibold">
-            Upcoming Ending Services
+            Pending Renewals
           </h2>
         </div>
 

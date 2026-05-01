@@ -1038,20 +1038,42 @@ export const fetchStats = async (fy?: string) => {
 
     const [rows] = await db.query<StatsResult[]>(
       `
-      SELECT 
-        SUM(sub_total) AS total_sales,
-        SUM(CASE WHEN status = 'pending' THEN grand_total ELSE 0 END) AS pending_amount,
-        SUM(CASE WHEN status = 'paid' THEN grand_total ELSE 0 END) AS paid_amount
-      FROM invoice
-      WHERE status != "cancelled" AND invoice_date >= ? AND invoice_date < ?
-      `,
+  SELECT 
+    SUM(sub_total) AS total_sales,
+
+    -- ✅ Current month pending
+    SUM(
+      CASE 
+        WHEN status = 'pending' 
+        AND invoice_date >= DATE_FORMAT(UTC_DATE(), '%Y-%m-01')
+        AND invoice_date < DATE_ADD(DATE_FORMAT(UTC_DATE(), '%Y-%m-01'), INTERVAL 1 MONTH)
+        THEN grand_total 
+        ELSE 0 
+      END
+    ) AS current_outstanding,
+
+    -- ✅ Previous outstanding (before current month)
+    SUM(
+      CASE 
+        WHEN status = 'pending' 
+        AND invoice_date < DATE_FORMAT(UTC_DATE(), '%Y-%m-01')
+        THEN grand_total 
+        ELSE 0 
+      END
+    ) AS previous_outstanding
+
+  FROM invoice
+  WHERE status != "cancelled"
+  AND invoice_date >= ?
+  AND invoice_date < ?
+  `,
       [startDate, endDate]
-    );
+    )
 
     return {
       totalSales: rows[0]?.total_sales ?? 0,
-      pendingAmount: rows[0]?.pending_amount ?? 0,
-      paidAmount: rows[0]?.paid_amount ?? 0,
+      currentOutstanding: rows[0]?.current_outstanding ?? 0,
+      previousOutstanding: rows[0]?.previous_outstanding ?? 0,
     };
   } catch (error) {
     console.error("Error fetching stats:", error);
