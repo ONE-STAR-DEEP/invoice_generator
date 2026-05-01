@@ -5,13 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 
 const SearchComponent = (
-    { placeholder } : { placeholder: string }
+    { placeholder, prefix="" }: { placeholder: string, prefix: string }
 ) => {
 
     const router = useRouter()
     const searchParams = useSearchParams()
 
-    const [search, setSearch] = useState(searchParams.get("search") || "")
+    const [search, setSearch] = useState(searchParams.get(`${prefix}search`) || "")
     const [debouncedValue, setDebouncedValue] = useState(search)
 
     useEffect(() => {
@@ -27,9 +27,9 @@ const SearchComponent = (
         const params = new URLSearchParams(searchParams.toString())
 
         if (debouncedValue) {
-            params.set("search", debouncedValue)
+            params.set(`${prefix}search`, debouncedValue)
         } else {
-            params.delete("search")
+            params.delete(`${prefix}search`)
         }
 
         router.push(`?${params.toString()}`, { scroll: false })

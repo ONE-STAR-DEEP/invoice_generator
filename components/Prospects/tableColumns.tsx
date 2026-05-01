@@ -29,6 +29,14 @@ export const columns: ColumnDef<ProspectData>[] = [
     header: "Address",
   },
   {
+    accessorKey: "visiting_date",
+    header: "Visiting Date",
+    cell: ({ row }) => {
+      const date = new Date(row.getValue("visiting_date"))
+      return <span>{date.toLocaleDateString()}</span>
+    },
+  },
+  {
     accessorKey: "id",
     header: "Action",
     cell: ({ row }) => {
@@ -36,7 +44,7 @@ export const columns: ColumnDef<ProspectData>[] = [
 
       return (
         // <ViewInvoices id={Number(id)} />
-        <Eye onClick={() => window.open(row.original.visiting_card, "_blank")} size={16} className="hover: cursor-pointer"/>
+        <Eye onClick={() => window.open(row.original.visiting_card, "_blank")} size={16} className="hover: cursor-pointer" />
       );
     },
   }

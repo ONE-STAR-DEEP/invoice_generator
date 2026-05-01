@@ -43,7 +43,7 @@ const AddProspectPopup = ({ id, mode }: {
         budget: "",
         urgency: "",
         status: "new",
-        followUpDate: null as Date | null,
+        visitingDate: null as Date | null,
         assignedTo: "",
         createdAt: new Date(),
     };
@@ -315,6 +315,21 @@ const AddProspectPopup = ({ id, mode }: {
                                             setData(prev => ({
                                                 ...prev,
                                                 requirement: e.target.value
+                                            }))
+                                        }
+                                    />
+                                </Field>
+
+                                <Field>
+                                    <Label htmlFor="visitingDate">Visiting date</Label>
+                                    <Input id="visitingDate" name="visitingDate" placeholder="e.g. Website, Visit"
+                                        className="h-10"
+                                        value={data.visitingDate ? data.visitingDate.toISOString().slice(0, 10) : ""}
+                                        type="date"
+                                        onChange={(e) =>
+                                            setData(prev => ({
+                                                ...prev,
+                                                visitingDate: e.target.value ? new Date(e.target.value) : null
                                             }))
                                         }
                                     />

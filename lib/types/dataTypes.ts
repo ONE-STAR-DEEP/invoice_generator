@@ -442,7 +442,7 @@ export type ProspectFormData = {
   budget?: string,
   urgency?: string,
   status: "new" | "contacted" | "qualified" | "converted" | "dropped",
-  followUpDate?: Date | null,
+  visitingDate?: Date | null,
   assignedTo?: string,
   createdAt: Date,
 }
@@ -461,7 +461,7 @@ export type ProspectData = {
   budget?: string,
   urgency?: string,
   status: "new" | "contacted" | "qualified" | "converted" | "dropped",
-  followUpDate?: Date | null,
+  visiting_date?: Date | null,
   assignedTo?: string,
   createdAt: Date,
   updatedAt: Date,

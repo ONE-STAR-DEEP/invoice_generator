@@ -1,4 +1,4 @@
-import { fetchPendingInvoices, fetchServices, fetchServicesByExpiry, fetchStats } from "@/lib/actions/invoice"
+import { fetchCurrentInvoices, fetchPreviousOutstanding, fetchServices, fetchServicesByExpiry, fetchStats } from "@/lib/actions/invoice"
 import { DataTable } from "@/components/dataTable"
 import { columns } from "@/components/Dashboard/pendingTableColumn"
 import { endingServicesColumns } from "@/components/Dashboard/endindServicesTableColumn"
@@ -26,7 +26,8 @@ export default async function Dashboard({
     invoice_limit?: string
     service_page?: string
     service_limit?: string
-    search?: string
+    currentsearch?: string
+    previoussearch?: string
     fy?: string
   }>
 }) {
@@ -38,7 +39,8 @@ export default async function Dashboard({
   const servicePage = Number(params.service_page) || 1
   const serviceLimit = Number(params.service_limit) || 10
 
-  const search = params.search;
+  const currentSearch = params.currentsearch;
+  const previousSearch = params.previoussearch;
 
   const fy = params.fy
 
@@ -48,10 +50,16 @@ export default async function Dashboard({
   const servicesData = await fetchServices();
   const companyData = await fetchCompanyData();
 
-  const invoiceData = await fetchPendingInvoices(
+  const invoiceData = await fetchCurrentInvoices(
     invoicePage,
     invoiceLimit,
-    search
+    currentSearch
+  )
+
+  const previousOutstanding = await fetchPreviousOutstanding(
+    invoicePage,
+    invoiceLimit,
+    previousSearch
   )
 
   const expServices = await fetchServicesByExpiry(
@@ -104,10 +112,10 @@ export default async function Dashboard({
           className="rounded-xl border bg-card text-card-foreground p-5 shadow-sm"
         >
           <p className="flex justify-between  text-sm text-muted-foreground">
-            Current Outstanding<Clock className="text-emerald-500" size={20} />
+            Current Payments<Clock className="text-emerald-500" size={20} />
           </p>
           <p className="text-2xl font-semibold mt-2">
-            ₹{statData.currentOutstanding}
+            ₹{statData.currentPayments}
           </p>
         </div>
 
@@ -130,11 +138,11 @@ export default async function Dashboard({
 
         <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b">
           <h2 className="text-lg font-semibold">
-            Pending Invoices
+            Current Invoices
           </h2>
 
           <div className="max-w-60 w-full">
-            <SearchComponent placeholder="Search by Client name/Invoice ID..." />
+            <SearchComponent placeholder="Search by Client name/Invoice ID..." prefix="current"/>
           </div>
         </div>
 
@@ -146,15 +154,38 @@ export default async function Dashboard({
             paramPrefix="invoice"
           />
         </div>
-
       </div>
+
+
+      <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b">
+          <h2 className="text-lg font-semibold">
+            Previous Outstandings
+          </h2>
+
+          <div className="max-w-60 w-full">
+            <SearchComponent placeholder="Search by Client name/Invoice ID..." prefix="previous"/>
+          </div>
+        </div>
+
+        <div className="p-4">
+          <DataTable data={previousOutstanding.data ?? []} columns={columns} />
+          <Pagination
+            totalPages={previousOutstanding.totalPages ?? 0}
+            totalItems={previousOutstanding.total}
+            paramPrefix="previous"
+          />
+        </div>
+      </div>
+
 
       <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
 
         {/* Top Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b">
           <h2 className="text-lg font-semibold">
-            Pending Renewals
+            Future Renewals
           </h2>
         </div>
 

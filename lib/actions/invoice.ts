@@ -711,7 +711,7 @@ export const fetchAllInvoices = async (
   }
 };
 
-export const fetchPendingInvoices = async (
+export const fetchCurrentInvoices = async (
   page = 1,
   limit = 10,
   search?: string
@@ -728,6 +728,99 @@ export const fetchPendingInvoices = async (
 
     let where = `
       WHERE i.status = 'pending'
+      AND invoice_date >= DATE_FORMAT(UTC_DATE(), '%Y-%m-01')
+      AND invoice_date < DATE_ADD(DATE_FORMAT(UTC_DATE(), '%Y-%m-01'), INTERVAL 1 MONTH)
+      AND (
+        i.client_name LIKE ?
+        OR i.invoice_id LIKE ?
+      )
+    `;
+
+    const params: any[] = [searchTerm, searchTerm];
+
+    const [rows]: any = await conn.execute(
+      `
+      SELECT 
+        i.id,
+        i.invoice_id,
+        i.client_id,
+        i.client_name,
+        i.client_gst_no,
+        i.client_email,
+        i.client_phone,
+        i.client_city,
+        i.client_state,
+        i.sub_total,
+        i.grand_total,
+        i.created_at,
+        i.invoice_date,
+        i.status,
+
+        COUNT(ii.id) AS total_items
+
+      FROM invoice i
+
+      LEFT JOIN invoice_items ii 
+        ON ii.invoice_id = i.id
+
+      ${where}
+
+      GROUP BY i.id
+
+      ORDER BY i.created_at ASC
+
+      LIMIT ${safeLimit} OFFSET ${safeOffset}
+      `,
+      params
+    );
+
+    const [[{ total }]]: any = await conn.execute(
+      `
+      SELECT COUNT(DISTINCT i.id) AS total
+      FROM invoice i
+      LEFT JOIN invoice_items ii ON ii.invoice_id = i.id
+      ${where}
+      `,
+      params
+    );
+
+    return {
+      success: true,
+      data: rows,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / safeLimit),
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      success: false,
+      message: "Fetch failed",
+    };
+  } finally {
+    conn.release();
+  }
+};
+
+export const fetchPreviousOutstanding = async (
+  page = 1,
+  limit = 10,
+  search?: string
+) => {
+  const conn = await db.getConnection();
+
+  try {
+    const offset = (page - 1) * limit;
+
+    const safeLimit = Math.min(50, Number(limit) || 10);
+    const safeOffset = Math.max(0, Number(offset) || 0);
+
+    const searchTerm = search ? `%${search}%` : `%`;
+
+    let where = `
+      WHERE i.status = 'pending'
+      AND invoice_date < DATE_FORMAT(UTC_DATE(), '%Y-%m-01')
       AND (
         i.client_name LIKE ?
         OR i.invoice_id LIKE ?
@@ -1050,7 +1143,7 @@ export const fetchStats = async (fy?: string) => {
         THEN grand_total 
         ELSE 0 
       END
-    ) AS current_outstanding,
+    ) AS current_payments,
 
     -- ✅ Previous outstanding (before current month)
     SUM(
@@ -1072,7 +1165,7 @@ export const fetchStats = async (fy?: string) => {
 
     return {
       totalSales: rows[0]?.total_sales ?? 0,
-      currentOutstanding: rows[0]?.current_outstanding ?? 0,
+      currentPayments: rows[0]?.current_payments ?? 0,
       previousOutstanding: rows[0]?.previous_outstanding ?? 0,
     };
   } catch (error) {

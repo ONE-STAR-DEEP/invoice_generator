@@ -38,7 +38,8 @@ export const insertProspect = async (data: ProspectFormData) => {
       address,
       company,
       source,
-      requirement
+      requirement,
+      visitingDate
     } = data;
 
     let uploadUrl;
@@ -56,9 +57,10 @@ export const insertProspect = async (data: ProspectFormData) => {
       company,
       source,
       requirement,
+      visiting_date,
       visiting_card
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         name,
@@ -68,6 +70,7 @@ export const insertProspect = async (data: ProspectFormData) => {
         company,
         source,
         requirement,
+        visitingDate,
         uploadUrl
       ]
     );
@@ -115,6 +118,8 @@ export const fetchProspects = async (
     const total = countResult[0].total;
     const totalPages = Math.ceil(total / limit);
 
+    console.log(rows)
+
     return {
       success: true,
       data: rows as ProspectData[],
@@ -150,7 +155,7 @@ export const fetchProspectDetails = async (Id: number) => {
 
     return {
       success: true,
-      data: prospect as ProspectFormData,
+      data: prospect as ProspectData,
       message: "Client details fetched"
     };
 
