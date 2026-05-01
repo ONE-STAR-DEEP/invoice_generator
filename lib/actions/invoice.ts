@@ -830,8 +830,7 @@ export const fetchServicesByExpiry = async (
       JOIN invoice i ON i.id = ii.invoice_id
 
       WHERE ii.expiry IS NOT NULL
-        AND ii.expiry BETWEEN UTC_TIMESTAMP() 
-        AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY)
+        AND ii.expiry <= DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY)
         AND i.status != "cancelled"
         AND i.renewed != true
 
@@ -848,8 +847,7 @@ export const fetchServicesByExpiry = async (
 
       WHERE 
       ii.expiry IS NOT NULL
-      AND ii.expiry BETWEEN UTC_TIMESTAMP() 
-      AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY)
+      AND ii.expiry <= DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY)
       AND i.status != 'cancelled'
       AND i.renewed != true
     `

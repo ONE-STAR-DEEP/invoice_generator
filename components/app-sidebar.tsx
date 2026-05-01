@@ -162,7 +162,7 @@ export function AppSidebar() {
                             </SidebarMenuItem>
 
                             <SidebarMenuItem>
-                                <SidebarMenuButton onClick={()=>setOpen(true)}>
+                                <SidebarMenuButton onClick={() => setOpen(true)}>
                                     <Download className="w-4 h-4" />
                                     Download GST
                                 </SidebarMenuButton>
@@ -174,6 +174,16 @@ export function AppSidebar() {
                                     <SidebarMenuButton>
                                         <Users className="w-4 h-4" />
                                         Clients
+                                    </SidebarMenuButton>
+                                </Link>
+                            </SidebarMenuItem>
+
+                            <SidebarMenuItem>
+                                <Link
+                                    href="/dashboard/prospects">
+                                    <SidebarMenuButton>
+                                        <Users className="w-4 h-4" />
+                                        Prospects
                                     </SidebarMenuButton>
                                 </Link>
                             </SidebarMenuItem>

@@ -203,6 +203,7 @@ const AddItemPopup = ({ id, mode }: {
                                                 </div>
                                                 <p className='text-14-regular'>{data.bill_file.name}</p>
                                                 <Button className="h-0 hover:bg-transparent hover:text-red-500" variant="ghost"
+                                                    type="button"
                                                     onClick={(e) => {
                                                         e.stopPropagation(); // Prevent triggering file input
 

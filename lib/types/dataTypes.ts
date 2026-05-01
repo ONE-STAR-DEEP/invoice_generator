@@ -427,3 +427,43 @@ export type FetchedAdjustment = {
 
   created_at: string;
 };
+
+
+export type ProspectFormData = {
+  visitingCard?: File | null,
+  name: string,
+  phone: string,
+  email?: string,
+  company?: string,
+  address?: string,
+  source: string,
+  interest?: string,
+  requirement: string,
+  budget?: string,
+  urgency?: string,
+  status: "new" | "contacted" | "qualified" | "converted" | "dropped",
+  followUpDate?: Date | null,
+  assignedTo?: string,
+  createdAt: Date,
+}
+
+
+export type ProspectData = {
+  visitingCard?: File,
+  name: string,
+  phone: string,
+  email?: string,
+  company?: string,
+  address?: string,
+  source: string,
+  interest?: string,
+  requirement: string,
+  budget?: string,
+  urgency?: string,
+  status: "new" | "contacted" | "qualified" | "converted" | "dropped",
+  followUpDate?: Date | null,
+  assignedTo?: string,
+  createdAt: Date,
+  updatedAt: Date,
+  visiting_card: string;
+}
