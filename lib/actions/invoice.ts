@@ -1140,7 +1140,7 @@ export const fetchStats = async (fy?: string) => {
         WHEN status = 'pending' 
         AND invoice_date >= DATE_FORMAT(UTC_DATE(), '%Y-%m-01')
         AND invoice_date < DATE_ADD(DATE_FORMAT(UTC_DATE(), '%Y-%m-01'), INTERVAL 1 MONTH)
-        THEN grand_total 
+        THEN sub_total 
         ELSE 0 
       END
     ) AS current_payments,
@@ -1150,7 +1150,7 @@ export const fetchStats = async (fy?: string) => {
       CASE 
         WHEN status = 'pending' 
         AND invoice_date < DATE_FORMAT(UTC_DATE(), '%Y-%m-01')
-        THEN grand_total 
+        THEN sub_total 
         ELSE 0 
       END
     ) AS previous_outstanding
