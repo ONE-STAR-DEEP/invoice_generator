@@ -3,7 +3,7 @@ import { DataTable } from "@/components/dataTable"
 import { columns } from "@/components/Dashboard/pendingTableColumn"
 import { endingServicesColumns } from "@/components/Dashboard/endindServicesTableColumn"
 import AddInvoicePopup from "@/components/Invoice/addInvoicePopup"
-import { CircleCheckBig, Clock, TrendingUp, Users } from "lucide-react"
+import { CalendarArrowDown, CircleCheckBig, Clock, TrendingUp, Users } from "lucide-react"
 import Pagination from "@/components/paginationComponent"
 import SearchComponent from "@/components/SearchComponent"
 import FinancialYearSelect from "@/components/Dashboard/FinancialYearSelector"
@@ -76,11 +76,9 @@ export default async function Dashboard({
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-linear-to-r from-primary to-secondary text-primary-foreground rounded-2xl p-6 shadow-md">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            Welcome to Thaver Tech Invoice Generator 👋
+            Welcome to Thaver Tech
           </h1>
-          <p className="text-sm text-primary-foreground mt-1">
-            Manage invoices, track services, and monitor payments — all in one place.
-          </p>
+          
           <p className="text-sm text-primary-foreground mt-2">
             {today}
           </p>
@@ -123,7 +121,7 @@ export default async function Dashboard({
           className="rounded-xl border bg-card text-card-foreground p-5 shadow-sm"
         >
           <p className="flex justify-between text-sm text-muted-foreground">
-            Previous Outstanding<CircleCheckBig className="text-green-700" size={20} />
+            Previous Outstanding<CalendarArrowDown className="text-green-700" size={20} />
           </p>
           <p className="text-2xl font-semibold mt-2">
             ₹{statData.previousOutstanding}
